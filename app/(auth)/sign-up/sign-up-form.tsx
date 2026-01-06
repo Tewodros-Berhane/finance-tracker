@@ -14,10 +14,16 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-
+import { useRouter } from "next/navigation";
+import z from "zod";
+import { authClient } from "@/lib/auth-client";
+import { useTransition } from "react";
+import { Loader2 } from "lucide-react";
 import { signUpSchema, type SignUpValues } from "../schema"
 
 export function SignUpForm() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -28,8 +34,23 @@ export function SignUpForm() {
     },
   })
 
-  function onSubmit() {
-    toast.success("Account created! Welcome to Vantage.")
+  function onSubmit(data: z.infer<typeof signUpSchema>) {
+    startTransition(async () => {
+      await authClient.signUp.email({
+        name: data.fullName,
+        email: data.email,
+        password: data.password,
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Signed up successfully");
+            router.push("/");
+          },
+          onError: (error) => {
+            toast.error(error.error.message);
+          },
+        },
+      });
+    });
   }
 
   return (
@@ -102,8 +123,15 @@ export function SignUpForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          Create account
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>Signing Up...</span>
+                </>
+              ) : (
+                <span>Sign Up</span>
+              )}
         </Button>
       </form>
     </Form>

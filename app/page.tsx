@@ -1,4 +1,5 @@
 import { ModeToggle } from "@/components/modules/dark-mode-toggle";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -10,6 +11,10 @@ export default function Home() {
       <p className="text-lg text-zinc-600 dark:text-zinc-400">
         Track your expenses and income
       </p>
+      <div id="auth-buttons">
+        <Link className="mx-4" href="/sign-in">Sign In</Link>
+        <Link href="/sign-up">Sign Up</Link>
+      </div>
     </div>
   );
 }

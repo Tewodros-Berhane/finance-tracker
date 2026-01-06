@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -13,11 +13,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/input";
+import { useTransition } from "react";
 
 import { signInSchema, type SignInValues } from "../schema"
+import z from "zod";
+import { authClient } from "@/lib/auth-client";
+import { Loader2 } from "lucide-react";
 
 export function SignInForm() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -26,8 +32,22 @@ export function SignInForm() {
     },
   })
 
-  function onSubmit() {
-    toast.success("Welcome back to Vantage!")
+  function onSubmit(data: z.infer<typeof signInSchema>) {
+    startTransition(async () => {
+      await authClient.signIn.email({
+        email: data.email,
+        password: data.password,
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Logged in successfully");
+            router.push("/");
+          },
+          onError: (error) => {
+            toast.error(error.error.message);
+          },
+        },
+      });
+    });
   }
 
   return (
@@ -69,8 +89,15 @@ export function SignInForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          Sign in
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>logging in...</span>
+                </>
+              ) : (
+                <span>login</span>
+              )}
         </Button>
       </form>
     </Form>
