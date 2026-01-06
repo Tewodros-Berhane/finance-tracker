@@ -24,6 +24,11 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  financialAccounts FinancialAccount[]
+  categories        Category[]
+  transactions      Transaction[]
+  budgets           Budget[]
+  goals             Goal[]
 
   @@unique([email])
   @@map("user")
@@ -75,4 +80,101 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT
+  CASH
+  INVESTMENT
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+model FinancialAccount {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  type      AccountType
+  balance   Decimal
+  currency  String      @default("USD")
+  color     String
+  icon      String
+  transactions Transaction[]
+  goals       Goal[]
+
+  @@index([userId])
+}
+
+model Category {
+  id       String       @id @default(cuid())
+  userId   String
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  type     CategoryType
+  icon     String
+  color    String
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id                 String          @id @default(cuid())
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialAccountId String
+  financialAccount   FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+  categoryId         String?
+  category           Category?       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount             Decimal
+  date               DateTime
+  description        String?
+  type               TransactionType
+  isRecurring        Boolean         @default(false)
+
+  @@index([userId])
+  @@index([financialAccountId])
+  @@index([categoryId])
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Decimal
+  month      Int
+  year       Int
+
+  @@index([userId])
+  @@index([categoryId])
+}
+
+model Goal {
+  id                 String            @id @default(cuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  targetAmount       Decimal
+  currentAmount      Decimal           @default(0)
+  deadline           DateTime?
+  financialAccountId String?
+  financialAccount   FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([financialAccountId])
 }
