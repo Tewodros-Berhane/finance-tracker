@@ -1,5 +1,9 @@
 import type { ReactNode } from "react"
 
+import {
+  AddTransactionModal,
+  AddTransactionTrigger,
+} from "@/components/modules/add-transaction-modal"
 import { AppSidebar } from "@/components/modules/app-sidebar"
 import { DashboardBreadcrumbs } from "@/components/modules/dashboard-breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -14,6 +18,18 @@ type DashboardLayoutProps = {
   children: ReactNode
 }
 
+const mockAccounts = [
+  { id: "main-checking", name: "Main Checking", currency: "USD" },
+  { id: "cash", name: "Cash", currency: "USD" },
+]
+
+const mockCategories = [
+  { id: "cat-salary", name: "Salary", type: "INCOME" },
+  { id: "cat-groceries", name: "Groceries", type: "EXPENSE" },
+  { id: "cat-rent", name: "Rent", type: "EXPENSE" },
+  { id: "cat-transport", name: "Transport", type: "EXPENSE" },
+]
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
@@ -24,9 +40,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <Separator orientation="vertical" className="h-6" />
           <DashboardBreadcrumbs />
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
-              Quick Add
-            </Button>
+            <AddTransactionModal
+              accounts={mockAccounts}
+              categories={mockCategories}
+              trigger={
+                <Button variant="outline" size="sm">
+                  Quick Add
+                </Button>
+              }
+            />
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
@@ -34,4 +56,3 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </SidebarProvider>
   )
 }
-
