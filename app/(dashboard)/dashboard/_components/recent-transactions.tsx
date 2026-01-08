@@ -30,7 +30,7 @@ const iconMap = {
   groceries: ShoppingBasket,
   transit: TrainFront,
   misc: Receipt,
-} satisfies Record<string, typeof Banknote>
+} satisfies Record<"salary" | "home" | "groceries" | "transit" | "misc", typeof Banknote>
 
 type RecentTransactionsProps = {
   data: RecentTransaction[]
@@ -64,7 +64,7 @@ export function RecentTransactions({
       <CardContent className="space-y-4">
         {data.map((transaction) => {
           const Icon =
-            (transaction.icon && iconMap[transaction.icon]) || Receipt
+            (transaction.icon && iconMap[transaction.icon as keyof typeof iconMap]) || Receipt
           const isIncome = transaction.type === "INCOME"
 
           return (
