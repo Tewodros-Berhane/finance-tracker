@@ -1,0 +1,163 @@
+import { unstable_cache } from "next/cache"
+import type { Prisma } from "../generated/prisma/client"
+
+import { prisma } from "../prisma"
+
+const DEFAULT_LIMIT = 50
+
+export type TransactionFilters = {
+  from?: Date
+  to?: Date
+  accountId?: string
+  categoryId?: string
+  page?: number
+  limit?: number
+}
+
+type TransactionRow = {
+  id: string
+  date: string
+  description: string | null
+  amount: string
+  type: "INCOME" | "EXPENSE" | "TRANSFER"
+  category: {
+    id: string
+    name: string
+    color: string
+    icon: string
+  } | null
+  financialAccount: {
+    id: string
+    name: string
+    currency: string
+  }
+}
+
+type TransactionResult = {
+  data: TransactionRow[]
+  meta: {
+    total: number
+    page: number
+    limit: number
+  }
+}
+
+const buildWhereClause = (
+  userId: string,
+  filters: TransactionFilters
+): Prisma.TransactionWhereInput => {
+  const where: Prisma.TransactionWhereInput = { userId }
+
+  if (filters.accountId) {
+    where.financialAccountId = filters.accountId
+  }
+
+  if (filters.categoryId) {
+    if (filters.categoryId === "uncategorized") {
+      where.categoryId = null
+    } else {
+      where.categoryId = filters.categoryId
+    }
+  }
+
+  if (filters.from || filters.to) {
+    where.date = {
+      ...(filters.from ? { gte: filters.from } : {}),
+      ...(filters.to ? { lte: filters.to } : {}),
+    }
+  }
+
+  return where
+}
+
+export async function getTransactions(
+  userId: string,
+  filters: TransactionFilters = {}
+): Promise<TransactionResult> {
+  const page = filters.page && filters.page > 0 ? filters.page : 1
+  const limit = filters.limit && filters.limit > 0 ? filters.limit : DEFAULT_LIMIT
+
+  const cacheKey = [
+    "transactions",
+    userId,
+    JSON.stringify({
+      from: filters.from?.toISOString(),
+      to: filters.to?.toISOString(),
+      accountId: filters.accountId ?? "",
+      categoryId: filters.categoryId ?? "",
+      page,
+      limit,
+    }),
+  ]
+
+  const cached = unstable_cache(
+    async () => {
+      const where = buildWhereClause(userId, filters)
+
+      const [rows, total] = await Promise.all([
+        prisma.transaction.findMany({
+          where,
+          orderBy: { date: "desc" },
+          skip: (page - 1) * limit,
+          take: limit,
+          select: {
+            id: true,
+            date: true,
+            description: true,
+            amount: true,
+            type: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+                icon: true,
+              },
+            },
+            financialAccount: {
+              select: {
+                id: true,
+                name: true,
+                currency: true,
+              },
+            },
+          },
+        }),
+        prisma.transaction.count({ where }),
+      ])
+
+      return {
+        data: rows.map((row) => ({
+          id: row.id,
+          date: row.date.toISOString(),
+          description: row.description,
+          amount: row.amount.toString(),
+          type: row.type,
+          category: row.category
+            ? {
+                id: row.category.id,
+                name: row.category.name,
+                color: row.category.color,
+                icon: row.category.icon,
+              }
+            : null,
+          financialAccount: {
+            id: row.financialAccount.id,
+            name: row.financialAccount.name,
+            currency: row.financialAccount.currency,
+          },
+        })),
+        meta: {
+          total,
+          page,
+          limit,
+        },
+      }
+    },
+    cacheKey,
+    { tags: ["transactions"] }
+  )
+
+  return cached()
+}
+
