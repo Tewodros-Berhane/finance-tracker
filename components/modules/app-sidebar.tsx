@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
   Landmark,
@@ -10,10 +10,10 @@ import {
   PiggyBank,
   Target,
   Wallet,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -35,39 +35,49 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { authClient } from "@/lib/auth-client";
+import router from "next/router";
 
 const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Transactions", href: "/transactions", icon: ArrowLeftRight },
-]
+];
 
 const managementNav = [
   { title: "Accounts", href: "/accounts", icon: Landmark },
   { title: "Budgets", href: "/budgets", icon: PiggyBank },
   { title: "Goals", href: "/goals", icon: Target },
-]
+];
 
-const systemNav = [
-  { title: "Categories", href: "/categories", icon: Layers },
-]
+const systemNav = [{ title: "Categories", href: "/categories", icon: Layers }];
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const { isMobile, setOpenMobile } = useSidebar()
+  const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const isActive = (href: string) => {
     if (href === "/") {
-      return pathname === "/"
+      return pathname === "/";
     }
 
-    return pathname === href || pathname.startsWith(`${href}/`)
-  }
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const handleNavClick = () => {
     if (isMobile) {
-      setOpenMobile(false)
+      setOpenMobile(false);
     }
+  };
+
+  async function onsubmit() {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/login"); // redirect to login page
+        },
+      },
+    });
   }
 
   return (
@@ -179,11 +189,13 @@ export function AppSidebar() {
             <DropdownMenuLabel>Profile</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem>
+              <Link href="/sign-in" onClick={onsubmit}>Logout</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

@@ -136,7 +136,7 @@ export function AddTransactionModal({
     }
   }, [form, selectedType])
 
-  async function onSubmit(values: TransactionValues) {
+  async function onSubmit() {
     await new Promise((resolve) => setTimeout(resolve, 600))
     toast.success("Transaction added successfully!")
     setOpen(false)
@@ -355,4 +355,3 @@ export function AddTransactionModal({
     </Dialog>
   )
 }
-

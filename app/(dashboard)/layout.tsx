@@ -1,9 +1,6 @@
 import type { ReactNode } from "react"
 
-import {
-  AddTransactionModal,
-  AddTransactionTrigger,
-} from "@/components/modules/add-transaction-modal"
+import { AddTransactionModal } from "@/components/modules/add-transaction-modal"
 import { AppSidebar } from "@/components/modules/app-sidebar"
 import { DashboardBreadcrumbs } from "@/components/modules/dashboard-breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -23,7 +20,7 @@ const mockAccounts = [
   { id: "cash", name: "Cash", currency: "USD" },
 ]
 
-const mockCategories = [
+const mockCategories: { id: string; name: string; type: "INCOME" | "EXPENSE" }[] = [
   { id: "cat-salary", name: "Salary", type: "INCOME" },
   { id: "cat-groceries", name: "Groceries", type: "EXPENSE" },
   { id: "cat-rent", name: "Rent", type: "EXPENSE" },

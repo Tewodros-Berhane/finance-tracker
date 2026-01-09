@@ -7,8 +7,10 @@ import { StatsGrid } from "./_components/stats-grid"
 
 const currency = "USD"
 
-const buildCashFlowData = () => {
-  const now = new Date()
+const referenceDate = new Date("2024-09-15T00:00:00.000Z")
+
+const buildCashFlowData = (baseDate: Date) => {
+  const now = new Date(baseDate)
   const formatter = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -30,7 +32,7 @@ const buildCashFlowData = () => {
 }
 
 export default function DashboardPage() {
-  const cashFlowData = buildCashFlowData()
+  const cashFlowData = buildCashFlowData(referenceDate)
   const monthlyIncome = cashFlowData.reduce((sum, item) => sum + item.income, 0)
   const monthlyExpenses = cashFlowData.reduce(
     (sum, item) => sum + item.expenses,
@@ -53,7 +55,7 @@ export default function DashboardPage() {
       category: "Salary",
       description: "Vantage Payroll",
       accountName: "Main Checking",
-      date: new Date().toISOString(),
+      date: referenceDate.toISOString(),
       amount: 5200,
       type: "INCOME",
       icon: "salary",
@@ -63,7 +65,7 @@ export default function DashboardPage() {
       category: "Housing",
       description: "Rent payment",
       accountName: "Main Checking",
-      date: new Date(Date.now() - 86400000 * 2).toISOString(),
+      date: new Date(referenceDate.getTime() - 86400000 * 2).toISOString(),
       amount: 1650,
       type: "EXPENSE",
       icon: "home",
@@ -73,7 +75,7 @@ export default function DashboardPage() {
       category: "Groceries",
       description: "Whole Foods",
       accountName: "Cash",
-      date: new Date(Date.now() - 86400000 * 4).toISOString(),
+      date: new Date(referenceDate.getTime() - 86400000 * 4).toISOString(),
       amount: 154.38,
       type: "EXPENSE",
       icon: "groceries",
@@ -83,7 +85,7 @@ export default function DashboardPage() {
       category: "Transportation",
       description: "Metro pass",
       accountName: "Cash",
-      date: new Date(Date.now() - 86400000 * 6).toISOString(),
+      date: new Date(referenceDate.getTime() - 86400000 * 6).toISOString(),
       amount: 62.5,
       type: "EXPENSE",
       icon: "transit",
@@ -93,7 +95,7 @@ export default function DashboardPage() {
       category: "Entertainment",
       description: "Streaming bundle",
       accountName: "Main Checking",
-      date: new Date(Date.now() - 86400000 * 7).toISOString(),
+      date: new Date(referenceDate.getTime() - 86400000 * 7).toISOString(),
       amount: 19.99,
       type: "EXPENSE",
       icon: "misc",
@@ -136,7 +138,7 @@ export default function DashboardPage() {
     category: string
     spent: number
     limit: number
-    icon?: string
+    icon?: "misc" | "shopping" | "dining" | "transport" | "housing"
   }>
 
   return (

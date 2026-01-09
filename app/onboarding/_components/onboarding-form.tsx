@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -28,15 +28,18 @@ import {
   accountTypes,
   currencies,
   onboardingSchema,
-  type OnboardingValues,
 } from "../schema"
+import { z } from "zod"
 
 
 
 export function OnboardingForm() {
   const router = useRouter()
-  const form = useForm<OnboardingValues>({
-    resolver: zodResolver(onboardingSchema) as any,
+  const form = useForm<z.infer<typeof onboardingSchema>>({
+    resolver: zodResolver(onboardingSchema) as Resolver<
+      z.infer<typeof onboardingSchema>,
+      any
+    >,
     defaultValues: {
       name: "",
       type: "CHECKING",
@@ -62,7 +65,7 @@ export function OnboardingForm() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
             <FormField
-              control={form.control as any}
+              control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
@@ -75,7 +78,7 @@ export function OnboardingForm() {
               )}
             />
             <FormField
-              control={form.control as any}
+              control={form.control}
               name="type"
               render={({ field }) => (
                 <FormItem>
@@ -102,7 +105,7 @@ export function OnboardingForm() {
               )}
             />
             <FormField
-              control={form.control as any}
+              control={form.control}
               name="currency"
               render={({ field }) => (
                 <FormItem>
@@ -129,7 +132,7 @@ export function OnboardingForm() {
               )}
             />
             <FormField
-              control={form.control as any}
+              control={form.control}
               name="balance"
               render={({ field }) => (
                 <FormItem>
