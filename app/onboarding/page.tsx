@@ -1,6 +1,7 @@
 import { OnboardingForm } from "./_components/onboarding-form"
 
 export default function OnboardingPage() {
+  const userId = "demo-user"
   return (
     <div className="bg-background flex min-h-screen items-center justify-center px-4 py-12">
       <div className="flex w-full max-w-2xl flex-col items-center gap-6 text-center">
@@ -12,9 +13,8 @@ export default function OnboardingPage() {
             Let&apos;s set up your first financial account to get started.
           </p>
         </div>
-        <OnboardingForm />
+        <OnboardingForm userId={userId} />
       </div>
     </div>
   )
 }
-

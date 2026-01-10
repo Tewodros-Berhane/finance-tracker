@@ -1,11 +1,14 @@
 "use client"
 
+import { useActionState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useForm, type Resolver } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import { z } from "zod"
 
+import { createOnboardingAccount } from "@/lib/actions/onboarding.actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -24,22 +27,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  accountTypes,
-  currencies,
-  onboardingSchema,
-} from "../schema"
-import { z } from "zod"
+import { accountTypes, currencies, onboardingSchema } from "../schema"
 
+type OnboardingFormProps = {
+  userId: string
+}
 
+type OnboardingState = {
+  success: boolean
+  data: { id: string } | null
+  error: string | null
+}
 
-export function OnboardingForm() {
+const initialState: OnboardingState = {
+  success: false,
+  data: null,
+  error: null,
+}
+
+export function OnboardingForm({ userId }: OnboardingFormProps) {
   const router = useRouter()
+  const [state, formAction, isPending] = useActionState<
+    OnboardingState,
+    z.infer<typeof onboardingSchema> & { userId: string }
+  >((_, payload) => createOnboardingAccount(payload), initialState)
+
   const form = useForm<z.infer<typeof onboardingSchema>>({
-    resolver: zodResolver(onboardingSchema) as Resolver<
-      z.infer<typeof onboardingSchema>,
-      any
-    >,
+    resolver: zodResolver(onboardingSchema),
     defaultValues: {
       name: "",
       type: "CHECKING",
@@ -48,12 +62,25 @@ export function OnboardingForm() {
     },
   })
 
-  const isSubmitting = form.formState.isSubmitting
+  useEffect(() => {
+    if (state.error) {
+      toast.error(state.error)
+    }
+  }, [state.error])
 
-  async function onSubmit() {
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    toast.success("Account created! Setting up your workspace...")
-    router.push("/dashboard")
+  useEffect(() => {
+    if (state.success) {
+      toast.success("Account created! Setting up your workspace...")
+      router.push("/dashboard")
+    }
+  }, [router, state.success])
+
+  const onSubmit = (values: z.infer<typeof onboardingSchema>) => {
+    formAction({
+      userId,
+      ...values,
+      balance: values.balance.trim(),
+    })
   }
 
   return (
@@ -149,8 +176,8 @@ export function OnboardingForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Creating...
