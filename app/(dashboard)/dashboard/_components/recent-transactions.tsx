@@ -6,12 +6,14 @@ import {
   Receipt,
   ShoppingBasket,
   TrainFront,
+  Utensils,
+  Wallet,
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
-type TransactionType = "INCOME" | "EXPENSE"
+type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER"
 
 type RecentTransaction = {
   id: string
@@ -26,11 +28,20 @@ type RecentTransaction = {
 
 const iconMap = {
   salary: Banknote,
+  income: Banknote,
+  rent: Home,
+  housing: Home,
   home: Home,
   groceries: ShoppingBasket,
+  food: Utensils,
+  dining: Utensils,
   transit: TrainFront,
+  transport: TrainFront,
+  travel: TrainFront,
+  cash: Wallet,
   misc: Receipt,
-} satisfies Record<"salary" | "home" | "groceries" | "transit" | "misc", typeof Banknote>
+  uncategorized: Receipt,
+} satisfies Record<string, typeof Banknote>
 
 type RecentTransactionsProps = {
   data: RecentTransaction[]
@@ -63,9 +74,12 @@ export function RecentTransactions({
       </CardHeader>
       <CardContent className="space-y-4">
         {data.map((transaction) => {
-          const Icon =
-            (transaction.icon && iconMap[transaction.icon as keyof typeof iconMap]) || Receipt
+          const iconKey =
+            transaction.icon?.toLowerCase() ??
+            transaction.category.toLowerCase()
+          const Icon = iconMap[iconKey] ?? Receipt
           const isIncome = transaction.type === "INCOME"
+          const isExpense = transaction.type === "EXPENSE"
 
           return (
             <div
@@ -91,10 +105,12 @@ export function RecentTransactions({
               <div
                 className={cn(
                   "shrink-0 text-sm font-semibold tabular-nums",
-                  isIncome ? "text-emerald-500" : "text-rose-500"
+                  isIncome && "text-emerald-500",
+                  isExpense && "text-rose-500",
+                  transaction.type === "TRANSFER" && "text-muted-foreground"
                 )}
               >
-                {isIncome ? "+" : "-"}
+                {isIncome ? "+" : isExpense ? "-" : ""}
                 {formatCurrency(Math.abs(transaction.amount), currency)}
               </div>
             </div>
@@ -104,4 +120,3 @@ export function RecentTransactions({
     </Card>
   )
 }
-

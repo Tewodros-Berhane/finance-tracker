@@ -1,8 +1,105 @@
-export default function BudgetsPage() {
-    return (
-        <div>
-            <h1>Budgets</h1>
-            <p>Welcome to your budgets page!</p>
+import { Prisma } from "@/lib/generated/prisma/client"
+import { getBudgetsWithProgress } from "@/lib/services/budget.service"
+import { prisma } from "@/lib/prisma"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Wallet } from "lucide-react"
+
+import { AddBudgetModal } from "./_components/add-budget-modal"
+import { BudgetCard } from "./_components/budget-card"
+import { BudgetStats } from "./_components/budget-stats"
+
+export default async function BudgetsPage() {
+  const userId = "demo-user"
+
+  const [budgets, categories] = await Promise.all([
+    getBudgetsWithProgress(userId),
+    prisma.category.findMany({
+      where: { userId, type: "EXPENSE" },
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+  ])
+
+  const totalBudgeted = budgets.reduce(
+    (total, budget) => total.plus(new Prisma.Decimal(budget.limit)),
+    new Prisma.Decimal(0)
+  )
+  const totalSpent = budgets.reduce(
+    (total, budget) => total.plus(new Prisma.Decimal(budget.spent)),
+    new Prisma.Decimal(0)
+  )
+
+  const overBudgetCount = budgets.filter(
+    (budget) => Number(budget.spent) > Number(budget.limit)
+  ).length
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Budgets</h1>
+          <p className="text-muted-foreground text-sm">
+            Stay on track with monthly limits for every category.
+          </p>
         </div>
-    );
+        <AddBudgetModal
+          userId={userId}
+          categories={categories}
+          trigger={<Button size="sm">Add Budget</Button>}
+        />
+      </header>
+
+      {budgets.length > 0 && (
+        <BudgetStats
+          totalBudgeted={totalBudgeted.toString()}
+          totalSpent={totalSpent.toString()}
+        />
+      )}
+
+      {overBudgetCount > 0 && (
+        <Alert variant="destructive">
+          <AlertTitle>Budget warning</AlertTitle>
+          <AlertDescription>
+            {overBudgetCount} {overBudgetCount === 1 ? "category is" : "categories are"} over budget this month.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {budgets.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+            <span className="bg-muted flex size-12 items-center justify-center rounded-full">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+            </span>
+            <div className="space-y-1">
+              <p className="text-base font-medium">Set your first budget</p>
+              <p className="text-sm text-muted-foreground">
+                Create spending limits to stay in control this month.
+              </p>
+            </div>
+            <AddBudgetModal
+              userId={userId}
+              categories={categories}
+              trigger={<Button variant="outline">Create Budget</Button>}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <ScrollArea className="max-h-[70vh] pr-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {budgets.map((budget) => (
+              <BudgetCard key={budget.id} budget={budget} userId={userId} />
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  )
 }

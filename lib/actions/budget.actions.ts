@@ -1,0 +1,110 @@
+"use server"
+
+import { randomUUID } from "crypto"
+import { revalidateTag } from "next/cache"
+import { z } from "zod"
+
+import { prisma } from "../prisma"
+import { upsertBudgetSchema } from "./budget.schema"
+
+const deleteBudgetSchema = z.object({
+  userId: z.string().min(1),
+  id: z.string().min(1),
+})
+
+export type ActionResponse<T> = {
+  success: boolean
+  data: T | null
+  error: string | null
+}
+
+export type BudgetActionState = ActionResponse<{ id: string }>
+
+export async function upsertBudget(
+  state: BudgetActionState,
+  input: z.infer<typeof upsertBudgetSchema>
+): Promise<BudgetActionState>
+export async function upsertBudget(
+  input: z.infer<typeof upsertBudgetSchema>
+): Promise<BudgetActionState>
+export async function upsertBudget(
+  stateOrInput: BudgetActionState | z.infer<typeof upsertBudgetSchema>,
+  maybeInput?: z.infer<typeof upsertBudgetSchema>
+): Promise<BudgetActionState> {
+  const payload =
+    maybeInput ?? (stateOrInput as z.infer<typeof upsertBudgetSchema>)
+  const parsed = upsertBudgetSchema.safeParse(payload)
+
+  if (!parsed.success) {
+    return { success: false, data: null, error: "Invalid budget payload." }
+  }
+
+  const data = parsed.data
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  const existing = await prisma.budget.findFirst({
+    where: {
+      userId: data.userId,
+      categoryId: data.categoryId,
+      month,
+      year,
+    },
+    select: { id: true },
+  })
+
+  const createId = randomUUID()
+  const targetId = existing?.id ?? createId
+
+  const saved = await prisma.budget.upsert({
+    where: { id: targetId },
+    update: {
+      amount: data.amount,
+      month,
+      year,
+    },
+    create: {
+      id: targetId,
+      userId: data.userId,
+      categoryId: data.categoryId,
+      amount: data.amount,
+      month,
+      year,
+    },
+    select: { id: true },
+  })
+
+  revalidateTag("budgets")
+
+  return { success: true, data: { id: saved.id }, error: null }
+}
+
+export async function deleteBudget(
+  input: z.infer<typeof deleteBudgetSchema>
+): Promise<ActionResponse<{ id: string }>> {
+  const parsed = deleteBudgetSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return { success: false, data: null, error: "Invalid delete payload." }
+  }
+
+  const data = parsed.data
+
+  const existing = await prisma.budget.findFirst({
+    where: { id: data.id, userId: data.userId },
+    select: { id: true },
+  })
+
+  if (!existing) {
+    return { success: false, data: null, error: "Budget not found." }
+  }
+
+  await prisma.budget.deleteMany({
+    where: { id: existing.id, userId: data.userId },
+  })
+
+  revalidateTag("budgets")
+
+  return { success: true, data: { id: existing.id }, error: null }
+}

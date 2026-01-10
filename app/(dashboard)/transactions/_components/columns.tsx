@@ -3,12 +3,14 @@
 import { format } from "date-fns"
 import {
   ArrowUpDown,
+  Home,
   MoreHorizontal,
   Pencil,
   Receipt,
   ShoppingBag,
   Tag,
   Trash2,
+  Utensils,
   UtensilsCrossed,
   Wallet,
 } from "lucide-react"
@@ -43,7 +45,12 @@ export type TransactionRow = {
 
 const categoryIconMap = {
   shopping: ShoppingBag,
+  groceries: ShoppingBag,
+  food: Utensils,
   dining: UtensilsCrossed,
+  rent: Home,
+  housing: Home,
+  home: Home,
   receipt: Receipt,
   tag: Tag,
   wallet: Wallet,
@@ -125,7 +132,8 @@ export const columns: ColumnDef<TransactionRow>[] = [
     },
     cell: ({ row }) => {
       const color = row.original.categoryColor ?? undefined
-      const iconKey = (row.original.categoryIcon ?? "tag") as keyof typeof categoryIconMap
+      const iconKey =
+        (row.original.categoryIcon ?? row.original.categoryName).toLowerCase()
       const Icon = categoryIconMap[iconKey] ?? Tag
 
       return (

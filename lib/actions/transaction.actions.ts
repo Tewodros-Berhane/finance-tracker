@@ -1,41 +1,39 @@
 "use server"
 
-import { revalidateTag } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 
 import { prisma } from "../prisma"
-
-const createTransactionSchema = z.object({
-  userId: z.string().min(1),
-  financialAccountId: z.string().min(1),
-  categoryId: z.string().optional(),
-  type: z.enum(["INCOME", "EXPENSE", "TRANSFER"]),
-  amount: z
-    .string()
-    .min(1)
-    .refine((value) => Number(value) > 0 && !Number.isNaN(Number(value)), {
-      message: "Amount must be a positive number",
-    }),
-  date: z.coerce.date(),
-  description: z.string().optional(),
-  isRecurring: z.boolean().default(false),
-})
+import { createTransactionSchema } from "./transaction.schema"
+// export { createTransactionSchema } from "./transaction.schema"
 
 const deleteTransactionSchema = z.object({
   userId: z.string().min(1),
   id: z.string().min(1),
 })
 
-type ActionResponse<T> = {
+export type ActionResponse<T> = {
   success: boolean
   data: T | null
   error: string | null
 }
 
+export type TransactionActionState = ActionResponse<{ id: string }>
+
+export async function createTransaction(
+  state: TransactionActionState,
+  input: z.infer<typeof createTransactionSchema>
+): Promise<TransactionActionState>
 export async function createTransaction(
   input: z.infer<typeof createTransactionSchema>
-): Promise<ActionResponse<{ id: string }>> {
-  const parsed = createTransactionSchema.safeParse(input)
+): Promise<TransactionActionState>
+export async function createTransaction(
+  stateOrInput: TransactionActionState | z.infer<typeof createTransactionSchema>,
+  maybeInput?: z.infer<typeof createTransactionSchema>
+): Promise<TransactionActionState> {
+  const payload =
+    maybeInput ?? (stateOrInput as z.infer<typeof createTransactionSchema>)
+  const parsed = createTransactionSchema.safeParse(payload)
 
   if (!parsed.success) {
     return {
@@ -98,6 +96,7 @@ export async function createTransaction(
   revalidateTag("transactions", "default")
   revalidateTag("summary", "default")
   revalidateTag(`account-${data.financialAccountId}`, "default")
+  revalidatePath("/transactions")
 
   return {
     success: true,

@@ -1,3 +1,8 @@
+import { Suspense } from "react"
+import { getSummary } from "@/lib/services/dashboard.service"
+import { getRecentTransactions } from "@/lib/services/transaction.service"
+import { Skeleton } from "@/components/ui/skeleton"
+
 import { CashFlowChart } from "./_components/cashflow-chart"
 import { CategoryBreakdown } from "./_components/category-breakdown"
 import { DashboardBudgets } from "./_components/dashboard-budgets"
@@ -7,139 +12,85 @@ import { StatsGrid } from "./_components/stats-grid"
 
 const currency = "USD"
 
-const referenceDate = new Date("2024-09-15T00:00:00.000Z")
+const budgetAlerts = [
+  {
+    id: "budget-1",
+    category: "Shopping",
+    spent: 450,
+    limit: 500,
+    icon: "shopping",
+  },
+  {
+    id: "budget-2",
+    category: "Dining",
+    spent: 320,
+    limit: 400,
+    icon: "dining",
+  },
+  {
+    id: "budget-3",
+    category: "Transportation",
+    spent: 210,
+    limit: 250,
+    icon: "transport",
+  },
+] satisfies Array<{
+  id: string
+  category: string
+  spent: number
+  limit: number
+  icon?: "misc" | "shopping" | "dining" | "transport" | "housing"
+}>
 
-const buildCashFlowData = (baseDate: Date) => {
-  const now = new Date(baseDate)
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  })
-
-  return Array.from({ length: 30 }, (_, index) => {
-    const date = new Date(now)
-    date.setDate(now.getDate() - (29 - index))
-
-    const income = Math.round(760 + Math.sin(index / 4) * 180 + index * 6)
-    const expenses = Math.round(520 + Math.cos(index / 5) * 160 + index * 4)
-
-    return {
-      date: formatter.format(date),
-      income,
-      expenses,
-    }
-  })
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-56" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-80" />
+        <Skeleton className="h-80" />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Skeleton className="h-80 lg:col-span-2" />
+        <Skeleton className="h-80" />
+      </div>
+    </div>
+  )
 }
 
-export default function DashboardPage() {
-  const cashFlowData = buildCashFlowData(referenceDate)
-  const monthlyIncome = cashFlowData.reduce((sum, item) => sum + item.income, 0)
-  const monthlyExpenses = cashFlowData.reduce(
-    (sum, item) => sum + item.expenses,
-    0
-  )
+async function DashboardContent() {
+  const userId = "demo-user"
+  const [summary, recent] = await Promise.all([
+    getSummary(userId),
+    getRecentTransactions(userId, 5),
+  ])
 
-  const totalBalance = 24580.5
+  const recentTransactions = recent.map((transaction) => ({
+    id: transaction.id,
+    category: transaction.category?.name ?? "Uncategorized",
+    description: transaction.description ?? "Untitled transaction",
+    accountName: transaction.financialAccount.name,
+    date: transaction.date,
+    amount: Number(transaction.amount),
+    type: transaction.type,
+    icon: transaction.category?.icon,
+  }))
 
-  const categoryData = [
-    { category: "Housing", value: 3200 },
-    { category: "Groceries", value: 1240 },
-    { category: "Transportation", value: 640 },
-    { category: "Utilities", value: 520 },
-    { category: "Subscriptions", value: 310 },
-  ]
-
-  const recentTransactions = [
-    {
-      id: "tx-1",
-      category: "Salary",
-      description: "Vantage Payroll",
-      accountName: "Main Checking",
-      date: referenceDate.toISOString(),
-      amount: 5200,
-      type: "INCOME",
-      icon: "salary",
-    },
-    {
-      id: "tx-2",
-      category: "Housing",
-      description: "Rent payment",
-      accountName: "Main Checking",
-      date: new Date(referenceDate.getTime() - 86400000 * 2).toISOString(),
-      amount: 1650,
-      type: "EXPENSE",
-      icon: "home",
-    },
-    {
-      id: "tx-3",
-      category: "Groceries",
-      description: "Whole Foods",
-      accountName: "Cash",
-      date: new Date(referenceDate.getTime() - 86400000 * 4).toISOString(),
-      amount: 154.38,
-      type: "EXPENSE",
-      icon: "groceries",
-    },
-    {
-      id: "tx-4",
-      category: "Transportation",
-      description: "Metro pass",
-      accountName: "Cash",
-      date: new Date(referenceDate.getTime() - 86400000 * 6).toISOString(),
-      amount: 62.5,
-      type: "EXPENSE",
-      icon: "transit",
-    },
-    {
-      id: "tx-5",
-      category: "Entertainment",
-      description: "Streaming bundle",
-      accountName: "Main Checking",
-      date: new Date(referenceDate.getTime() - 86400000 * 7).toISOString(),
-      amount: 19.99,
-      type: "EXPENSE",
-      icon: "misc",
-    },
-  ] satisfies Array<{
-    id: string
-    category: string
-    description: string
-    accountName: string
-    date: string
-    amount: number
-    type: "INCOME" | "EXPENSE"
-    icon?: string
-  }>
-
-  const budgetAlerts = [
-    {
-      id: "budget-1",
-      category: "Shopping",
-      spent: 450,
-      limit: 500,
-      icon: "shopping",
-    },
-    {
-      id: "budget-2",
-      category: "Dining",
-      spent: 320,
-      limit: 400,
-      icon: "dining",
-    },
-    {
-      id: "budget-3",
-      category: "Transportation",
-      spent: 210,
-      limit: 250,
-      icon: "transport",
-    },
-  ] satisfies Array<{
-    id: string
-    category: string
-    spent: number
-    limit: number
-    icon?: "misc" | "shopping" | "dining" | "transport" | "housing"
-  }>
+  const categoryData = summary.categoryBreakdown.map((item) => ({
+    category: item.name,
+    value: Number(item.total),
+  }))
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,14 +105,14 @@ export default function DashboardPage() {
       </header>
 
       <StatsGrid
-        totalBalance={totalBalance}
-        monthlyIncome={monthlyIncome}
-        monthlyExpenses={monthlyExpenses}
+        totalBalance={Number(summary.totalBalance)}
+        monthlyIncome={Number(summary.monthlyIncome)}
+        monthlyExpenses={Number(summary.monthlyExpenses)}
         currency={currency}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <CashFlowChart data={cashFlowData} />
+        <CashFlowChart data={summary.cashFlow} />
         <CategoryBreakdown data={categoryData} currency={currency} />
       </div>
 
@@ -172,5 +123,13 @@ export default function DashboardPage() {
         <DashboardBudgets data={budgetAlerts} currency={currency} />
       </div>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   )
 }

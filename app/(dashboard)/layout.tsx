@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { AddTransactionModal } from "@/components/modules/add-transaction-modal"
+import { AddTransactionModal } from "../(dashboard)/transactions/_components/add-transaction-modal"
 import { AppSidebar } from "@/components/modules/app-sidebar"
 import { DashboardBreadcrumbs } from "@/components/modules/dashboard-breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,8 @@ const mockCategories: { id: string; name: string; type: "INCOME" | "EXPENSE" }[]
   { id: "cat-transport", name: "Transport", type: "EXPENSE" },
 ]
 
+const userId = "demo-user"
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
@@ -40,6 +42,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <AddTransactionModal
               accounts={mockAccounts}
               categories={mockCategories}
+              userId={userId}
               trigger={
                 <Button variant="outline" size="sm">
                   Quick Add

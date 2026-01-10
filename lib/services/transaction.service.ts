@@ -42,6 +42,22 @@ type TransactionResult = {
   }
 }
 
+export type RecentTransaction = {
+  id: string
+  date: string
+  description: string | null
+  amount: string
+  type: "INCOME" | "EXPENSE" | "TRANSFER"
+  category: {
+    name: string
+    icon: string
+  } | null
+  financialAccount: {
+    name: string
+    currency: string
+  }
+}
+
 const buildWhereClause = (
   userId: string,
   filters: TransactionFilters
@@ -161,3 +177,60 @@ export async function getTransactions(
   return cached()
 }
 
+export async function getRecentTransactions(
+  userId: string,
+  limit = 5
+): Promise<RecentTransaction[]> {
+  const cacheKey = ["recent-transactions", userId, String(limit)]
+
+  const cached = unstable_cache(
+    async () => {
+      const rows = await prisma.transaction.findMany({
+        where: { userId },
+        orderBy: { date: "desc" },
+        take: limit,
+        select: {
+          id: true,
+          date: true,
+          description: true,
+          amount: true,
+          type: true,
+          category: {
+            select: {
+              name: true,
+              icon: true,
+            },
+          },
+          financialAccount: {
+            select: {
+              name: true,
+              currency: true,
+            },
+          },
+        },
+      })
+
+      return rows.map((row) => ({
+        id: row.id,
+        date: row.date.toISOString(),
+        description: row.description,
+        amount: row.amount.toString(),
+        type: row.type,
+        category: row.category
+          ? {
+              name: row.category.name,
+              icon: row.category.icon,
+            }
+          : null,
+        financialAccount: {
+          name: row.financialAccount.name,
+          currency: row.financialAccount.currency,
+        },
+      }))
+    },
+    cacheKey,
+    { tags: ["transactions"] }
+  )
+
+  return cached()
+}
