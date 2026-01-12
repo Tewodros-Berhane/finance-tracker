@@ -21,7 +21,17 @@ export function DataTableToolbar<TData>({
   categories,
   types,
 }: DataTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0
+  const isFiltered = [
+    table.getColumn("description")?.getFilterValue(),
+    table.getColumn("accountName")?.getFilterValue(),
+    table.getColumn("categoryName")?.getFilterValue(),
+    table.getColumn("type")?.getFilterValue(),
+  ].some((value) => {
+    if (Array.isArray(value)) {
+      return value.length > 0
+    }
+    return value !== undefined && value !== null && String(value).length > 0
+  })
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedCount = selectedRows.length
 
@@ -75,8 +85,8 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className="h-9"
           >
-            Reset
             <X className="size-4" />
+            Clear
           </Button>
         )}
       </div>
