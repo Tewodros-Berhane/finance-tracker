@@ -4,7 +4,8 @@ import type { ReactNode } from "react"
 import { useActionState, useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, Plus, Wallet } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, Plus, Tag, Wallet } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useForm, type Resolver } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -69,6 +70,12 @@ type AccountOption = {
   name: string
 }
 
+type CategoryOption = {
+  id: string
+  name: string
+  type: "INCOME" | "EXPENSE"
+}
+
 const colorOptions = [
   "#f59e0b",
   "#0ea5e9",
@@ -85,10 +92,14 @@ const initialState: GoalActionState = {
 }
 
 export function GoalForm({ trigger, initialData }: GoalFormProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [accountsLoading, setAccountsLoading] = useState(false)
   const [accountsRequested, setAccountsRequested] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoriesRequested, setCategoriesRequested] = useState(false)
   const [state, formAction, isPending] = useActionState<
     GoalActionState,
     GoalValues
@@ -103,6 +114,7 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
       currentAmount: initialData?.currentAmount ?? "0",
       deadline: initialData?.deadline ? new Date(initialData.deadline) : undefined,
       financialAccountId: initialData?.financialAccountId ?? "",
+      categoryId: "",
       icon: (initialData?.icon as GoalIcon) ?? "target",
       color: initialData?.color ?? colorOptions[0],
     },
@@ -111,6 +123,7 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
   const selectedColor = form.watch("color")
   const selectedIcon = form.watch("icon") as GoalIcon
   const selectedAccountId = form.watch("financialAccountId")
+  const selectedCategoryId = form.watch("categoryId")
 
   useEffect(() => {
     if (state.error) {
@@ -123,8 +136,9 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
       toast.success(initialData ? "Goal updated." : "Goal created.")
       form.reset()
       setOpen(false)
+      router.refresh()
     }
-  }, [form, initialData, state.success])
+  }, [form, initialData, router, state.success])
 
   useEffect(() => {
     if (!open) return
@@ -153,15 +167,45 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
       }
     }
 
+    const fetchCategories = async () => {
+      setCategoriesLoading(true)
+      try {
+        const response = await fetch("/api/categories")
+        const payload = (await response.json()) as {
+          success: boolean
+          data?: Array<{ id: string; name: string; type: "INCOME" | "EXPENSE" }>
+          error?: string | null
+        }
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error ?? "Failed to load categories.")
+        }
+
+        setCategories(Array.isArray(payload.data) ? payload.data : [])
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load categories."
+        toast.error(message)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
     if (!accountsRequested) {
       setAccountsRequested(true)
       fetchAccounts()
     }
-  }, [accountsRequested, open])
+
+    if (!categoriesRequested) {
+      setCategoriesRequested(true)
+      fetchCategories()
+    }
+  }, [accountsRequested, categoriesRequested, open])
 
   useEffect(() => {
     if (open) return
     setAccountsRequested(false)
+    setCategoriesRequested(false)
   }, [open])
 
   useEffect(() => {
@@ -174,12 +218,26 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
     }
   }, [accounts, form, selectedAccountId])
 
+  useEffect(() => {
+    if (!categories.length) return
+    const expenseCategories = categories.filter(
+      (category) => category.type === "EXPENSE"
+    )
+    const hasCategory = expenseCategories.some(
+      (category) => category.id === selectedCategoryId
+    )
+    if (!selectedCategoryId || !hasCategory) {
+      form.setValue("categoryId", expenseCategories[0]?.id ?? "")
+    }
+  }, [categories, form, selectedCategoryId])
+
   const handleSubmit = (values: GoalValues) => {
     formAction({
       ...values,
       targetAmount: values.targetAmount.trim(),
       currentAmount: values.currentAmount?.trim() ?? "0",
       financialAccountId: values.financialAccountId || undefined,
+      categoryId: values.categoryId || undefined,
     })
   }
 
@@ -193,7 +251,7 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-120">
         <DialogHeader>
           <DialogTitle>{initialData ? "Edit goal" : "Create goal"}</DialogTitle>
           <DialogDescription>
@@ -201,7 +259,10 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -253,43 +314,93 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="financialAccountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Funding account</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.length ? (
-                          accounts.map((account) => (
-                            <SelectItem key={account.id} value={account.id}>
-                              <div className="flex items-center gap-2">
-                                <Wallet className="h-4 w-4" />
-                                <span>{account.name}</span>
-                              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="financialAccountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Funding account</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.length ? (
+                            accounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                <div className="flex items-center gap-2">
+                                  <Wallet className="h-4 w-4" />
+                                  <span>{account.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : accountsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading accounts...
                             </SelectItem>
-                          ))
-                        ) : accountsLoading ? (
-                          <SelectItem value="loading" disabled>
-                            Loading accounts...
-                          </SelectItem>
-                        ) : (
-                          <SelectItem value="empty" disabled>
-                            No accounts available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              No accounts available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.length ? (
+                            categories
+                              .filter((category) => category.type === "EXPENSE")
+                              .map((category) => (
+                                <SelectItem
+                                  key={category.id}
+                                  value={category.id}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4" />
+                                    <span>{category.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                          ) : categoriesLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading categories...
+                            </SelectItem>
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              No categories available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="deadline"
@@ -307,7 +418,9 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
                           )}
                         >
                           <CalendarIcon className="h-4 w-4" />
-                          {field.value ? format(field.value, "PPP") : "Pick a date"}
+                          {field.value
+                            ? format(field.value, "PPP")
+                            : "Pick a date"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent align="start" className="w-auto p-0">
@@ -376,5 +489,5 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

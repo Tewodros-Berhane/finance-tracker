@@ -3,7 +3,8 @@
 import type { ReactNode } from "react"
 import { useActionState, useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, Plus, Wallet } from "lucide-react"
+import { Loader2, Plus, Tag, Wallet } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -55,6 +56,12 @@ type AccountOption = {
   name: string
 }
 
+type CategoryOption = {
+  id: string
+  name: string
+  type: "INCOME" | "EXPENSE"
+}
+
 const initialState: GoalActionState = {
   success: false,
   data: null,
@@ -66,10 +73,14 @@ export function ContributionModal({
   trigger,
   defaultAccountId,
 }: ContributionModalProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [accountsLoading, setAccountsLoading] = useState(false)
   const [accountsRequested, setAccountsRequested] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoriesRequested, setCategoriesRequested] = useState(false)
   const [state, formAction, isPending] = useActionState<
     GoalActionState,
     ContributionValues & { id: string }
@@ -80,10 +91,12 @@ export function ContributionModal({
     defaultValues: {
       amount: "",
       financialAccountId: defaultAccountId ?? "",
+      categoryId: "",
     },
   })
 
   const selectedAccountId = form.watch("financialAccountId")
+  const selectedCategoryId = form.watch("categoryId")
 
   useEffect(() => {
     if (state.error) {
@@ -96,8 +109,9 @@ export function ContributionModal({
       toast.success("Contribution added.")
       form.reset()
       setOpen(false)
+      router.refresh()
     }
-  }, [form, state.success])
+  }, [form, router, state.success])
 
   useEffect(() => {
     if (!open) return
@@ -126,15 +140,45 @@ export function ContributionModal({
       }
     }
 
+    const fetchCategories = async () => {
+      setCategoriesLoading(true)
+      try {
+        const response = await fetch("/api/categories")
+        const payload = (await response.json()) as {
+          success: boolean
+          data?: Array<{ id: string; name: string; type: "INCOME" | "EXPENSE" }>
+          error?: string | null
+        }
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error ?? "Failed to load categories.")
+        }
+
+        setCategories(Array.isArray(payload.data) ? payload.data : [])
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load categories."
+        toast.error(message)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
     if (!accountsRequested) {
       setAccountsRequested(true)
       fetchAccounts()
     }
-  }, [accountsRequested, open])
+
+    if (!categoriesRequested) {
+      setCategoriesRequested(true)
+      fetchCategories()
+    }
+  }, [accountsRequested, categoriesRequested, open])
 
   useEffect(() => {
     if (open) return
     setAccountsRequested(false)
+    setCategoriesRequested(false)
   }, [open])
 
   useEffect(() => {
@@ -147,15 +191,32 @@ export function ContributionModal({
     }
   }, [accounts, form, selectedAccountId])
 
+  useEffect(() => {
+    if (!categories.length) return
+    const expenseCategories = categories.filter(
+      (category) => category.type === "EXPENSE"
+    )
+    const hasCategory = expenseCategories.some(
+      (category) => category.id === selectedCategoryId
+    )
+    if (!selectedCategoryId || !hasCategory) {
+      form.setValue("categoryId", expenseCategories[0]?.id ?? "")
+    }
+  }, [categories, form, selectedCategoryId])
+
   const handleSubmit = (values: ContributionValues) => {
     formAction({
       id: goalId,
       amount: values.amount.trim(),
       financialAccountId: values.financialAccountId,
+      categoryId: values.categoryId,
     })
   }
 
-  const isSubmitDisabled = isPending || accounts.length === 0
+  const isSubmitDisabled =
+    isPending ||
+    accounts.length === 0 ||
+    categories.filter((category) => category.type === "EXPENSE").length === 0
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -167,7 +228,7 @@ export function ContributionModal({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[380px]">
+      <DialogContent className="sm:max-w-95">
         <DialogHeader>
           <DialogTitle>Add contribution</DialogTitle>
           <DialogDescription>
@@ -175,44 +236,97 @@ export function ContributionModal({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="financialAccountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Account</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.length ? (
-                          accounts.map((account) => (
-                            <SelectItem key={account.id} value={account.id}>
-                              <div className="flex items-center gap-2">
-                                <Wallet className="h-4 w-4" />
-                                <span>{account.name}</span>
-                              </div>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="financialAccountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Account</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.length ? (
+                            accounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                <div className="flex items-center gap-2">
+                                  <Wallet className="h-4 w-4" />
+                                  <span>{account.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : accountsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading accounts...
                             </SelectItem>
-                          ))
-                        ) : accountsLoading ? (
-                          <SelectItem value="loading" disabled>
-                            Loading accounts...
-                          </SelectItem>
-                        ) : (
-                          <SelectItem value="empty" disabled>
-                            No accounts available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              No accounts available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.length ? (
+                            categories
+                              .filter((category) => category.type === "EXPENSE")
+                              .map((category) => (
+                                <SelectItem
+                                  key={category.id}
+                                  value={category.id}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4" />
+                                    <span>{category.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                          ) : categoriesLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading categories...
+                            </SelectItem>
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              No categories available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="amount"
@@ -241,5 +355,5 @@ export function ContributionModal({
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

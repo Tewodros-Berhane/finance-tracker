@@ -25,13 +25,26 @@ export const upsertGoalSchema = z.object({
     .refine((value) => !value || value.length > 0, {
       message: "Select an account",
     }),
+  categoryId: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.length > 0, {
+      message: "Select a category",
+    }),
 }).superRefine((value, ctx) => {
   const currentAmount = Number(value.currentAmount ?? "0")
-  if (currentAmount > 0 && !value.financialAccountId) {
+  if (!value.id && currentAmount > 0 && !value.financialAccountId) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["financialAccountId"],
       message: "Select an account for the current amount",
+    })
+  }
+  if (!value.id && currentAmount > 0 && !value.categoryId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["categoryId"],
+      message: "Select a category for the current amount",
     })
   }
 })
@@ -45,4 +58,5 @@ export const updateGoalProgressSchema = z.object({
       message: "Contribution must be a positive number",
     }),
   financialAccountId: z.string().min(1, "Select an account"),
+  categoryId: z.string().min(1, "Select a category"),
 })

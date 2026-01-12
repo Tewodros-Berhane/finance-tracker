@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidateTag } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { Prisma } from "../generated/prisma/client"
 import { z } from "zod"
 
@@ -67,6 +67,17 @@ export async function upsertGoal(
     }
   }
 
+  if (data.categoryId) {
+    const category = await prisma.category.findFirst({
+      where: { id: data.categoryId, userId: user.id, type: "EXPENSE" },
+      select: { id: true },
+    })
+
+    if (!category) {
+      return { success: false, data: null, error: "Category not found." }
+    }
+  }
+
   const currentAmount = new Prisma.Decimal(data.currentAmount ?? "0")
 
   const saved = data.id
@@ -94,13 +105,20 @@ export async function upsertGoal(
       })
 
   if (!data.id && currentAmount.greaterThan(0) && data.financialAccountId) {
+    if (!data.categoryId) {
+      return {
+        success: false,
+        data: null,
+        error: "Select a category for the goal transaction.",
+      }
+    }
     await prisma.transaction.create({
       data: {
         userId: user.id,
         financialAccountId: data.financialAccountId,
-        categoryId: null,
-        type: "TRANSFER",
-        amount: currentAmount.mul(-1).toString(),
+        categoryId: data.categoryId,
+        type: "EXPENSE",
+        amount: currentAmount.toString(),
         date: new Date(),
         description: `Added ${currentAmount.toString()} to goal ${data.name}`,
         isRecurring: false,
@@ -116,6 +134,10 @@ export async function upsertGoal(
   if (data.financialAccountId) {
     revalidateTag(`account-${data.financialAccountId}`, "max")
   }
+  revalidatePath("/goals")
+  revalidatePath("/accounts")
+  revalidatePath("/dashboard")
+  revalidatePath("/transactions")
 
   return { success: true, data: { id: saved.id }, error: null }
 }
@@ -164,6 +186,15 @@ export async function updateGoalProgress(
     return { success: false, data: null, error: "Account not found." }
   }
 
+  const category = await prisma.category.findFirst({
+    where: { id: data.categoryId, userId: user.id, type: "EXPENSE" },
+    select: { id: true },
+  })
+
+  if (!category) {
+    return { success: false, data: null, error: "Category not found." }
+  }
+
   const contributionAmount = new Prisma.Decimal(data.amount)
   const newAmount = new Prisma.Decimal(existing.currentAmount)
     .plus(contributionAmount)
@@ -182,9 +213,9 @@ export async function updateGoalProgress(
     data: {
       userId: user.id,
       financialAccountId: data.financialAccountId,
-      categoryId: null,
-      type: "TRANSFER",
-      amount: contributionAmount.mul(-1).toString(),
+      categoryId: data.categoryId,
+      type: "EXPENSE",
+      amount: contributionAmount.toString(),
       date: new Date(),
       description: `Added ${contributionAmount.toString()} to goal ${existing.name}`,
       isRecurring: false,
@@ -197,6 +228,10 @@ export async function updateGoalProgress(
   revalidateTag("summary", "max")
   revalidateTag("accounts", "max")
   revalidateTag(`account-${data.financialAccountId}`, "max")
+  revalidatePath("/goals")
+  revalidatePath("/accounts")
+  revalidatePath("/dashboard")
+  revalidatePath("/transactions")
 
   return { success: true, data: { id: data.id }, error: null }
 }
