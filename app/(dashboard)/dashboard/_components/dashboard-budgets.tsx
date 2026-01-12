@@ -1,12 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import {
   CarFront,
   Home,
   Receipt,
   ShoppingBag,
   UtensilsCrossed,
-  
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -57,8 +57,8 @@ export function DashboardBudgets({
     <Card className="h-full">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base font-semibold">Budgets</CardTitle>
-        <Button variant="ghost" size="sm">
-          View All
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/budgets">View All</Link>
         </Button>
       </CardHeader>
       <CardContent className="space-y-5">
