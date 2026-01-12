@@ -1,20 +1,39 @@
-import { ModeToggle } from "@/components/modules/dark-mode-toggle";
-import Link from "next/link";
+import Link from "next/link"
+import { ModeToggle } from "@/components/modules/dark-mode-toggle"
+import { createMetadata, serializeJsonLd, siteConfig } from "@/lib/seo"
+import SignInPage from "./(auth)/sign-in/page"
+
+export const metadata = createMetadata({
+  title: "Vantage",
+  description:
+    "Manage accounts, track transactions, set budgets, and grow your savings goals with Vantage.",
+  canonical: "/",
+})
 
 export default function Home() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: siteConfig.name,
+    description: siteConfig.description,
+    url: siteConfig.url,
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      availability: "https://schema.org/OnlineOnly",
+    },
+  }
+
   return (
-    <div className="flex min-h-screen flex-col gap-10 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <div className="flex items-center gap-4">
-        <ModeToggle />
-        <h1 className="text-4xl font-bold">Finance Tracker</h1>
-      </div>
-      <p className="text-lg text-zinc-600 dark:text-zinc-400">
-        Track your expenses and income
-      </p>
-      <div id="auth-buttons">
-        <Link className="mx-4" href="/sign-in">Sign In</Link>
-        <Link href="/sign-up">Sign Up</Link>
-      </div>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+      />
+      <SignInPage />
+    </>
   );
 }

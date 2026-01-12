@@ -119,7 +119,7 @@ export async function upsertCategory(
         select: { id: true },
       })
 
-  revalidateTag("categories")
+  revalidateTag("categories", "max")
 
   return { success: true, data: { id: saved.id }, error: null }
 }
@@ -166,7 +166,7 @@ export async function deleteCategory(
     where: { id: existing.id, userId: user.id },
   })
 
-  revalidateTag("categories")
+  revalidateTag("categories", "max")
 
   return { success: true, data: { id: existing.id }, error: null }
 }

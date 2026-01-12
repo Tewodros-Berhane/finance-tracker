@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { createMetadata } from "@/lib/seo"
 import { getBudgetsWithProgress } from "@/lib/services/budget.service"
 import { getSummary } from "@/lib/services/dashboard.service"
 import { getRecentTransactions } from "@/lib/services/transaction.service"
@@ -14,6 +15,12 @@ import { DashboardBudgets, type BudgetIconKey } from "./_components/dashboard-bu
 import { DashboardFilters } from "./_components/dashboard-filters"
 import { RecentTransactions } from "./_components/recent-transactions"
 import { StatsGrid } from "./_components/stats-grid"
+
+export const metadata = createMetadata({
+  title: "Dashboard",
+  description: "View balances, spending trends, and cash flow at a glance.",
+  canonical: "/dashboard",
+})
 
 const currency = "USD"
 

@@ -134,7 +134,13 @@ export const columns: ColumnDef<TransactionRow>[] = [
       const color = row.original.categoryColor ?? undefined
       const iconKey =
         (row.original.categoryIcon ?? row.original.categoryName).toLowerCase()
-      const Icon = categoryIconMap[iconKey] ?? Tag
+      const hasIcon = Object.prototype.hasOwnProperty.call(
+        categoryIconMap,
+        iconKey
+      )
+      const Icon = hasIcon
+        ? categoryIconMap[iconKey as keyof typeof categoryIconMap]
+        : Tag
 
       return (
         <Badge

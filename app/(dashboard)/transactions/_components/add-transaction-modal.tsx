@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, Plus, Tag, Wallet } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -131,7 +131,7 @@ export function AddTransactionModal({
     TransactionValues
   >((_, payload) => createTransaction(payload), initialState)
   const form = useForm<TransactionValues>({
-    resolver: zodResolver(transactionSchema),
+    resolver: zodResolver(transactionSchema) as Resolver<TransactionValues>,
     defaultValues: {
       type: "EXPENSE",
       amount: "",

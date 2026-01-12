@@ -56,8 +56,8 @@ export async function createOnboardingAccount(
     select: { id: true },
   })
 
-  revalidateTag("accounts")
-  revalidateTag("summary")
+  revalidateTag("accounts", "max")
+  revalidateTag("summary", "max")
 
   return { success: true, data: { id: created.id }, error: null }
 }

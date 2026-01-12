@@ -1,10 +1,13 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getTransactions } from "@/lib/services/transaction.service"
+import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { AddTransactionModal } from "./_components/add-transaction-modal"
 import { TransactionsTable } from "./_components/transactions-table"
@@ -12,6 +15,12 @@ import { TransactionsTable } from "./_components/transactions-table"
 type TransactionsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
+
+export const metadata = createMetadata({
+  title: "Transactions",
+  description: "Review and manage your transaction ledger across accounts.",
+  canonical: "/transactions",
+})
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value
@@ -22,9 +31,32 @@ const parseDate = (value: string | undefined) => {
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
-export default async function TransactionsPage({
-  searchParams,
-}: TransactionsPageProps) {
+function TransactionsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-40" />
+      </div>
+      <Card>
+        <CardContent className="space-y-4 py-6">
+          <Skeleton className="h-8 w-72" />
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+async function TransactionsContent({ searchParams }: TransactionsPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const user = await getAuthenticatedUser()
   if (!user) {
@@ -215,5 +247,15 @@ export default async function TransactionsPage({
         categories={categoryOptions}
       />
     </div>
+  )
+}
+
+export default function TransactionsPage({
+  searchParams,
+}: TransactionsPageProps) {
+  return (
+    <Suspense fallback={<TransactionsSkeleton />}>
+      <TransactionsContent searchParams={searchParams} />
+    </Suspense>
   )
 }

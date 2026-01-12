@@ -77,7 +77,10 @@ export function RecentTransactions({
           const iconKey =
             transaction.icon?.toLowerCase() ??
             transaction.category.toLowerCase()
-          const Icon = iconMap[iconKey] ?? Receipt
+          const hasIcon = Object.prototype.hasOwnProperty.call(iconMap, iconKey)
+          const Icon = hasIcon
+            ? iconMap[iconKey as keyof typeof iconMap]
+            : Receipt
           const isIncome = transaction.type === "INCOME"
           const isExpense = transaction.type === "EXPENSE"
 

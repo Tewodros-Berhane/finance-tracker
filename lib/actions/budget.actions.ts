@@ -80,7 +80,7 @@ export async function upsertBudget(
     select: { id: true },
   })
 
-  revalidateTag("budgets")
+  revalidateTag("budgets", "max")
 
   return { success: true, data: { id: saved.id }, error: null }
 }
@@ -114,7 +114,7 @@ export async function deleteBudget(
     where: { id: existing.id, userId: user.id },
   })
 
-  revalidateTag("budgets")
+  revalidateTag("budgets", "max")
 
   return { success: true, data: { id: existing.id }, error: null }
 }

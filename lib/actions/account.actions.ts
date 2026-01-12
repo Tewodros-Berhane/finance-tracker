@@ -67,8 +67,8 @@ export async function createAccount(
     select: { id: true },
   })
 
-  revalidateTag("accounts")
-  revalidateTag("summary")
+  revalidateTag("accounts", "max")
+  revalidateTag("summary", "max")
 
   return {
     success: true,
@@ -120,8 +120,8 @@ export async function deleteAccount(
     },
   })
 
-  revalidateTag("accounts")
-  revalidateTag("summary")
+  revalidateTag("accounts", "max")
+  revalidateTag("summary", "max")
 
   return {
     success: true,

@@ -97,9 +97,9 @@ export async function createTransaction(
     select: { id: true },
   })
 
-  revalidateTag("transactions")
-  revalidateTag("summary")
-  revalidateTag(`account-${data.financialAccountId}`)
+  revalidateTag("transactions", "max")
+  revalidateTag("summary", "max")
+  revalidateTag(`account-${data.financialAccountId}`, "max")
   revalidatePath("/transactions")
 
   return {
@@ -152,9 +152,9 @@ export async function deleteTransaction(
     },
   })
 
-  revalidateTag("transactions")
-  revalidateTag("summary")
-  revalidateTag(`account-${existing.financialAccountId}`)
+  revalidateTag("transactions", "max")
+  revalidateTag("summary", "max")
+  revalidateTag(`account-${existing.financialAccountId}`, "max")
 
   return {
     success: true,

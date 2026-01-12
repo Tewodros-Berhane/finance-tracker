@@ -3,12 +3,19 @@ import { redirect } from "next/navigation"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getAccountsWithBalances } from "@/lib/services/account.service"
+import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
 import { AddAccountModal } from "./_components/add-account-modal"
 import { AccountCard } from "./_components/account-card"
 import { NetWorthCard } from "./_components/net-worth-card"
+
+export const metadata = createMetadata({
+  title: "Accounts",
+  description: "Monitor balances across your checking, savings, and credit accounts.",
+  canonical: "/accounts",
+})
 
 export default async function AccountsPage() {
   const user = await getAuthenticatedUser()

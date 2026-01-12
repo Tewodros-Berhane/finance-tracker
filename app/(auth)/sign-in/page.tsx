@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { createMetadata } from "@/lib/seo"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -11,6 +12,13 @@ import {
 } from "@/components/ui/card"
 
 import { SignInForm } from "./sign-in-form"
+
+export const metadata = createMetadata({
+  title: "Sign in",
+  description: "Securely access your Vantage account and dashboard.",
+  canonical: "/sign-in",
+  noIndex: true,
+})
 
 export default function SignInPage() {
   return (

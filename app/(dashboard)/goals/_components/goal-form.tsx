@@ -5,7 +5,7 @@ import { useActionState, useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, Plus, Wallet } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -95,7 +95,7 @@ export function GoalForm({ trigger, initialData }: GoalFormProps) {
   >((_, payload) => upsertGoal(payload), initialState)
 
   const form = useForm<GoalValues>({
-    resolver: zodResolver(goalSchema),
+    resolver: zodResolver(goalSchema) as Resolver<GoalValues>,
     defaultValues: {
       id: initialData?.id,
       name: initialData?.name ?? "",

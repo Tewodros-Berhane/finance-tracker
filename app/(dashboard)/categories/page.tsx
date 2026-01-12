@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getCategoriesWithStats } from "@/lib/services/category.service"
+import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -9,6 +10,12 @@ import { BookOpen, Tag } from "lucide-react"
 
 import { CategoryForm } from "./_components/category-form"
 import { CategoryList } from "./_components/category-list"
+
+export const metadata = createMetadata({
+  title: "Categories",
+  description: "Organize income and expenses with custom categories.",
+  canonical: "/categories",
+})
 
 const systemCategories = [
   {

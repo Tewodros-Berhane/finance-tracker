@@ -109,12 +109,12 @@ export async function upsertGoal(
     })
   }
 
-  revalidateTag("goals")
-  revalidateTag("transactions")
-  revalidateTag("summary")
-  revalidateTag("accounts")
+  revalidateTag("goals", "max")
+  revalidateTag("transactions", "max")
+  revalidateTag("summary", "max")
+  revalidateTag("accounts", "max")
   if (data.financialAccountId) {
-    revalidateTag(`account-${data.financialAccountId}`)
+    revalidateTag(`account-${data.financialAccountId}`, "max")
   }
 
   return { success: true, data: { id: saved.id }, error: null }
@@ -192,11 +192,11 @@ export async function updateGoalProgress(
     select: { id: true },
   })
 
-  revalidateTag("goals")
-  revalidateTag("transactions")
-  revalidateTag("summary")
-  revalidateTag("accounts")
-  revalidateTag(`account-${data.financialAccountId}`)
+  revalidateTag("goals", "max")
+  revalidateTag("transactions", "max")
+  revalidateTag("summary", "max")
+  revalidateTag("accounts", "max")
+  revalidateTag(`account-${data.financialAccountId}`, "max")
 
   return { success: true, data: { id: data.id }, error: null }
 }

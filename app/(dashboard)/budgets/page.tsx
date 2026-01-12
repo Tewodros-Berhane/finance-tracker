@@ -4,6 +4,7 @@ import { Prisma } from "@/lib/generated/prisma/client"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getBudgetsWithProgress } from "@/lib/services/budget.service"
 import { prisma } from "@/lib/prisma"
+import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -13,6 +14,12 @@ import { Wallet } from "lucide-react"
 import { AddBudgetModal } from "./_components/add-budget-modal"
 import { BudgetCard } from "./_components/budget-card"
 import { BudgetStats } from "./_components/budget-stats"
+
+export const metadata = createMetadata({
+  title: "Budgets",
+  description: "Set monthly limits and track spending by category.",
+  canonical: "/budgets",
+})
 
 export default async function BudgetsPage() {
   const user = await getAuthenticatedUser()

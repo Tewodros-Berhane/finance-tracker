@@ -3,12 +3,19 @@ import { redirect } from "next/navigation"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getGoalsWithAnalytics } from "@/lib/services/goal.service"
+import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PiggyBank } from "lucide-react"
 
 import { GoalForm } from "./_components/goal-form"
 import { GoalCard } from "./_components/goal-card"
+
+export const metadata = createMetadata({
+  title: "Goals",
+  description: "Track savings goals and contributions over time.",
+  canonical: "/goals",
+})
 
 export default async function GoalsPage() {
   const user = await getAuthenticatedUser()

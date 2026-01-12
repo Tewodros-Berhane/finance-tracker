@@ -39,8 +39,8 @@ export async function POST(request: Request) {
     select: { id: true },
   })
 
-  revalidateTag("accounts")
-  revalidateTag("summary")
+  revalidateTag("accounts", "max")
+  revalidateTag("summary", "max")
 
   return NextResponse.json({
     success: true,
