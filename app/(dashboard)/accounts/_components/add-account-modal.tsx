@@ -45,7 +45,7 @@ const accountTypes = [
   { value: "INVESTMENT", label: "Investment" },
 ] as const
 
-const currencyOptions = ["USD", "EUR", "GBP", "JPY"] as const
+const currencyOptions = ["USD", "BIRR"] as const
 
 const accountSchema = z.object({
   name: z.string().min(2, "Account name must be at least 2 characters."),
@@ -74,7 +74,7 @@ export function AddAccountModal({ trigger }: AddAccountModalProps) {
     defaultValues: {
       name: "",
       type: "CHECKING",
-      currency: "USD",
+      currency: "BIRR",
       initialBalance: "",
     },
   })
@@ -130,6 +130,7 @@ export function AddAccountModal({ trigger }: AddAccountModalProps) {
                 </FormItem>
               )}
             />
+            <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="type"
@@ -178,6 +179,7 @@ export function AddAccountModal({ trigger }: AddAccountModalProps) {
                 </FormItem>
               )}
             />
+            </div>
             <FormField
               control={form.control}
               name="initialBalance"

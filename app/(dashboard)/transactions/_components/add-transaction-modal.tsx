@@ -69,9 +69,7 @@ type AddTransactionModalProps = {
 
 const currencySymbols: Record<string, string> = {
   USD: "$",
-  EUR: "EUR",
-  GBP: "GBP",
-  JPY: "JPY",
+  BIRR: "Br",
 }
 
 const transactionTypes = [
