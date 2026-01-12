@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 export const createTransactionSchema = z.object({
-  userId: z.string().min(1),
   financialAccountId: z.string().min(1),
   categoryId: z.string().optional(),
   type: z.enum(["INCOME", "EXPENSE", "TRANSFER"]),

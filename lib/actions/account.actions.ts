@@ -3,12 +3,12 @@
 import { revalidateTag } from "next/cache"
 import { z } from "zod"
 
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { prisma } from "../prisma"
 
 const accountTypes = ["CHECKING", "SAVINGS", "CREDIT", "CASH", "INVESTMENT"] as const
 
 const createAccountSchema = z.object({
-  userId: z.string().min(1),
   name: z.string().min(2),
   type: z.enum(accountTypes),
   currency: z.string().min(1),
@@ -25,7 +25,6 @@ const createAccountSchema = z.object({
 })
 
 const deleteAccountSchema = z.object({
-  userId: z.string().min(1),
   id: z.string().min(1),
 })
 
@@ -48,11 +47,16 @@ export async function createAccount(
     }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const created = await prisma.financialAccount.create({
     data: {
-      userId: data.userId,
+      userId: user.id,
       name: data.name,
       type: data.type,
       currency: data.currency,
@@ -64,6 +68,7 @@ export async function createAccount(
   })
 
   revalidateTag("accounts")
+  revalidateTag("summary")
 
   return {
     success: true,
@@ -85,12 +90,17 @@ export async function deleteAccount(
     }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const existing = await prisma.financialAccount.findFirst({
     where: {
       id: data.id,
-      userId: data.userId,
+      userId: user.id,
     },
     select: { id: true },
   })
@@ -106,11 +116,12 @@ export async function deleteAccount(
   await prisma.financialAccount.deleteMany({
     where: {
       id: data.id,
-      userId: data.userId,
+      userId: user.id,
     },
   })
 
   revalidateTag("accounts")
+  revalidateTag("summary")
 
   return {
     success: true,

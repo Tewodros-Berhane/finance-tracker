@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation"
+
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getCategoriesWithStats } from "@/lib/services/category.service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,8 +24,12 @@ const systemCategories = [
 ]
 
 export default async function CategoriesPage() {
-  const userId = "demo-user"
-  const categories = await getCategoriesWithStats(userId)
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
+  }
+
+  const categories = await getCategoriesWithStats(user.id)
 
   const hasCategories = categories.length > 0
 
@@ -35,7 +42,7 @@ export default async function CategoriesPage() {
             Organize transactions with custom income and expense categories.
           </p>
         </div>
-        <CategoryForm userId={userId} trigger={<Button size="sm">New Category</Button>} />
+        <CategoryForm trigger={<Button size="sm">New Category</Button>} />
       </header>
 
       {!hasCategories && (
@@ -51,14 +58,13 @@ export default async function CategoriesPage() {
               </p>
             </div>
             <CategoryForm
-              userId={userId}
               trigger={<Button variant="outline">Create Category</Button>}
             />
           </CardContent>
         </Card>
       )}
 
-      {hasCategories && <CategoryList categories={categories} userId={userId} />}
+      {hasCategories && <CategoryList categories={categories} />}
 
       <Alert>
         <BookOpen className="h-4 w-4" />

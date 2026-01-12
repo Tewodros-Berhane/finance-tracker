@@ -26,10 +26,10 @@ type GoalCardProps = {
     progressPercent: number
     daysRemaining: number | null
     requiredMonthlySaving: string | null
+    financialAccountId?: string | null
     icon: string
     color: string
   }
-  userId: string
   currency?: string
 }
 
@@ -49,7 +49,7 @@ const formatCurrency = (value: number, currency: string) =>
     maximumFractionDigits: 2,
   }).format(value)
 
-export function GoalCard({ goal, userId, currency = "USD" }: GoalCardProps) {
+export function GoalCard({ goal, currency = "USD" }: GoalCardProps) {
   const current = Number(goal.currentAmount)
   const target = Number(goal.targetAmount)
   const progress = Math.min(100, Math.max(0, goal.progressPercent))
@@ -85,7 +85,10 @@ export function GoalCard({ goal, userId, currency = "USD" }: GoalCardProps) {
             <Badge variant={statusVariant}>{statusLabel}</Badge>
           </div>
         </div>
-        <ContributionModal userId={userId} goalId={goal.id} />
+        <ContributionModal
+          goalId={goal.id}
+          defaultAccountId={goal.financialAccountId}
+        />
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Progress

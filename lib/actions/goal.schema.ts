@@ -2,7 +2,6 @@ import { z } from "zod"
 
 export const upsertGoalSchema = z.object({
   id: z.string().optional(),
-  userId: z.string().min(1),
   name: z.string().min(2),
   targetAmount: z
     .string()
@@ -20,10 +19,24 @@ export const upsertGoalSchema = z.object({
   deadline: z.coerce.date().optional(),
   icon: z.string().optional(),
   color: z.string().optional(),
+  financialAccountId: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.length > 0, {
+      message: "Select an account",
+    }),
+}).superRefine((value, ctx) => {
+  const currentAmount = Number(value.currentAmount ?? "0")
+  if (currentAmount > 0 && !value.financialAccountId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["financialAccountId"],
+      message: "Select an account for the current amount",
+    })
+  }
 })
 
 export const updateGoalProgressSchema = z.object({
-  userId: z.string().min(1),
   id: z.string().min(1),
   amount: z
     .string()
@@ -31,4 +44,5 @@ export const updateGoalProgressSchema = z.object({
     .refine((value) => Number(value) > 0 && !Number.isNaN(Number(value)), {
       message: "Contribution must be a positive number",
     }),
+  financialAccountId: z.string().min(1, "Select an account"),
 })

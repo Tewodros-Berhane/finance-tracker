@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 export const upsertBudgetSchema = z.object({
-  userId: z.string().min(1),
   categoryId: z.string().min(1),
   amount: z
     .string()

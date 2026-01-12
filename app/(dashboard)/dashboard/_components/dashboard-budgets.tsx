@@ -23,6 +23,7 @@ const iconMap = {
 } as const
 
 type IconKey = keyof typeof iconMap
+export type BudgetIconKey = IconKey
 
 type BudgetItem = {
   id: string
@@ -98,4 +99,3 @@ export function DashboardBudgets({
     </Card>
   )
 }
-

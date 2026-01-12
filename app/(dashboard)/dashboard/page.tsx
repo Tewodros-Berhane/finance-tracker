@@ -1,46 +1,40 @@
 import { Suspense } from "react"
+import { redirect } from "next/navigation"
+
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { getBudgetsWithProgress } from "@/lib/services/budget.service"
 import { getSummary } from "@/lib/services/dashboard.service"
 import { getRecentTransactions } from "@/lib/services/transaction.service"
+import { prisma } from "@/lib/prisma"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { CashFlowChart } from "./_components/cashflow-chart"
 import { CategoryBreakdown } from "./_components/category-breakdown"
-import { DashboardBudgets } from "./_components/dashboard-budgets"
+import { DashboardBudgets, type BudgetIconKey } from "./_components/dashboard-budgets"
 import { DashboardFilters } from "./_components/dashboard-filters"
 import { RecentTransactions } from "./_components/recent-transactions"
 import { StatsGrid } from "./_components/stats-grid"
 
 const currency = "USD"
 
-const budgetAlerts = [
-  {
-    id: "budget-1",
-    category: "Shopping",
-    spent: 450,
-    limit: 500,
-    icon: "shopping",
-  },
-  {
-    id: "budget-2",
-    category: "Dining",
-    spent: 320,
-    limit: 400,
-    icon: "dining",
-  },
-  {
-    id: "budget-3",
-    category: "Transportation",
-    spent: 210,
-    limit: 250,
-    icon: "transport",
-  },
-] satisfies Array<{
-  id: string
-  category: string
-  spent: number
-  limit: number
-  icon?: "misc" | "shopping" | "dining" | "transport" | "housing"
-}>
+const budgetIconMap: Record<string, BudgetIconKey> = {
+  shopping: "shopping",
+  food: "dining",
+  dining: "dining",
+  home: "housing",
+  rent: "housing",
+  transport: "transport",
+  car: "transport",
+  travel: "transport",
+  receipt: "misc",
+  tag: "misc",
+  wallet: "misc",
+  card: "misc",
+  gift: "misc",
+}
+
+const mapBudgetIcon = (icon: string | null | undefined) =>
+  icon ? budgetIconMap[icon] : undefined
 
 function DashboardSkeleton() {
   return (
@@ -69,11 +63,53 @@ function DashboardSkeleton() {
   )
 }
 
-async function DashboardContent() {
-  const userId = "demo-user"
-  const [summary, recent] = await Promise.all([
-    getSummary(userId),
-    getRecentTransactions(userId, 5),
+type DashboardPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+const getParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value
+
+const parseDate = (value: string | undefined) => {
+  if (!value) return undefined
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+async function DashboardContent({ searchParams }: DashboardPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
+  }
+
+  const userId = user.id
+  const accountId =
+    getParam(resolvedSearchParams?.account) ??
+    getParam(resolvedSearchParams?.accountId)
+  const from =
+    parseDate(getParam(resolvedSearchParams?.from)) ??
+    parseDate(getParam(resolvedSearchParams?.startDate))
+  const to =
+    parseDate(getParam(resolvedSearchParams?.to)) ??
+    parseDate(getParam(resolvedSearchParams?.endDate))
+  const summaryFilters = {
+    accountId: accountId ?? undefined,
+    from,
+    to,
+  }
+  const [summary, recent, accounts, budgets] = await Promise.all([
+    getSummary(userId, summaryFilters),
+    getRecentTransactions(userId, { limit: 5, ...summaryFilters }),
+    prisma.financialAccount.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    getBudgetsWithProgress(userId, summaryFilters),
   ])
 
   const recentTransactions = recent.map((transaction) => ({
@@ -85,6 +121,14 @@ async function DashboardContent() {
     amount: Number(transaction.amount),
     type: transaction.type,
     icon: transaction.category?.icon,
+  }))
+
+  const budgetAlerts = budgets.map((budget) => ({
+    id: budget.id,
+    category: budget.categoryName,
+    spent: Number(budget.spent),
+    limit: Number(budget.limit),
+    icon: mapBudgetIcon(budget.categoryIcon),
   }))
 
   const categoryData = summary.categoryBreakdown.map((item) => ({
@@ -101,7 +145,7 @@ async function DashboardContent() {
             Overview of your finances in one place.
           </p>
         </div>
-        <DashboardFilters />
+        <DashboardFilters accounts={accounts} />
       </header>
 
       <StatsGrid
@@ -126,10 +170,10 @@ async function DashboardContent() {
   )
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ searchParams }: DashboardPageProps) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent />
+      <DashboardContent searchParams={searchParams} />
     </Suspense>
   )
 }

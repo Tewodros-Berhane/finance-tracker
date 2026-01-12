@@ -1,4 +1,7 @@
-import { prisma } from "../../../lib/prisma"
+import { redirect } from "next/navigation"
+
+import { prisma } from "@/lib/prisma"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getTransactions } from "@/lib/services/transaction.service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -7,7 +10,7 @@ import { AddTransactionModal } from "./_components/add-transaction-modal"
 import { TransactionsTable } from "./_components/transactions-table"
 
 type TransactionsPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 const getParam = (value: string | string[] | undefined) =>
@@ -22,20 +25,28 @@ const parseDate = (value: string | undefined) => {
 export default async function TransactionsPage({
   searchParams,
 }: TransactionsPageProps) {
-  const userId = "demo-user"
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
+  }
 
-  const page = Number(getParam(searchParams?.page)) || 1
-  const limit = Number(getParam(searchParams?.limit)) || undefined
+  const userId = user.id
+
+  const page = Number(getParam(resolvedSearchParams?.page)) || 1
+  const limit = Number(getParam(resolvedSearchParams?.limit)) || undefined
   const categoryId =
-    getParam(searchParams?.categoryId) ?? getParam(searchParams?.category)
+    getParam(resolvedSearchParams?.categoryId) ??
+    getParam(resolvedSearchParams?.category)
   const accountId =
-    getParam(searchParams?.accountId) ?? getParam(searchParams?.account)
+    getParam(resolvedSearchParams?.accountId) ??
+    getParam(resolvedSearchParams?.account)
   const from =
-    parseDate(getParam(searchParams?.startDate)) ??
-    parseDate(getParam(searchParams?.from))
+    parseDate(getParam(resolvedSearchParams?.startDate)) ??
+    parseDate(getParam(resolvedSearchParams?.from))
   const to =
-    parseDate(getParam(searchParams?.endDate)) ??
-    parseDate(getParam(searchParams?.to))
+    parseDate(getParam(resolvedSearchParams?.endDate)) ??
+    parseDate(getParam(resolvedSearchParams?.to))
 
   const [transactionsResult, accounts, categories] = await Promise.all([
     getTransactions(userId, {
@@ -179,7 +190,6 @@ export default async function TransactionsPage({
         <AddTransactionModal
           accounts={modalAccounts}
           categories={modalCategories}
-          userId={userId}
           trigger={<Button size="sm">Add Transaction</Button>}
         />
       </header>
@@ -193,7 +203,6 @@ export default async function TransactionsPage({
             <AddTransactionModal
               accounts={modalAccounts}
               categories={modalCategories}
-              userId={userId}
               trigger={<Button variant="outline">Create Transaction</Button>}
             />
           </CardContent>

@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache"
-import { endOfMonth, startOfMonth } from "date-fns"
+import { endOfDay, endOfMonth, startOfMonth } from "date-fns"
 import { Prisma } from "../generated/prisma/client"
 
 import { prisma } from "../prisma"
@@ -15,16 +15,33 @@ export type BudgetProgress = {
   percentage: number
 }
 
+export type BudgetProgressFilters = {
+  accountId?: string
+  from?: Date
+  to?: Date
+}
+
 export async function getBudgetsWithProgress(
-  userId: string
+  userId: string,
+  filters: BudgetProgressFilters = {}
 ): Promise<BudgetProgress[]> {
   const now = new Date()
-  const month = now.getMonth() + 1
-  const year = now.getFullYear()
-  const start = startOfMonth(now)
-  const end = endOfMonth(now)
+  const baseDate = filters.from ?? filters.to ?? now
+  const month = baseDate.getMonth() + 1
+  const year = baseDate.getFullYear()
+  const start = filters.from ?? startOfMonth(baseDate)
+  const end = filters.to ? endOfDay(filters.to) : endOfMonth(baseDate)
 
-  const cacheKey = ["budgets", userId, `${year}-${month}`]
+  const cacheKey = [
+    "budgets",
+    userId,
+    JSON.stringify({
+      month: `${year}-${month}`,
+      accountId: filters.accountId ?? "",
+      from: filters.from?.toISOString(),
+      to: filters.to?.toISOString(),
+    }),
+  ]
 
   const cached = unstable_cache(
     async () => {
@@ -53,6 +70,9 @@ export async function getBudgetsWithProgress(
               userId,
               type: "EXPENSE",
               categoryId: { in: categoryIds },
+              ...(filters.accountId
+                ? { financialAccountId: filters.accountId }
+                : {}),
               date: { gte: start, lte: end },
             },
             _sum: { amount: true },

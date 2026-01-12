@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import {
   ArrowLeftRight,
   Landmark,
@@ -36,8 +36,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client";
-import router from "next/router";
+import { authClient } from "@/lib/auth-client"
 
 const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -52,9 +51,26 @@ const managementNav = [
 
 const systemNav = [{ title: "Categories", href: "/categories", icon: Layers }];
 
-export function AppSidebar() {
-  const pathname = usePathname();
-  const { isMobile, setOpenMobile } = useSidebar();
+type AppSidebarProps = {
+  user?: {
+    name?: string | null
+    email?: string | null
+    image?: string | null
+  }
+}
+
+const getInitials = (name?: string | null) => {
+  if (!name) return "VT"
+  const parts = name.trim().split(" ").filter(Boolean)
+  if (parts.length === 0) return "VT"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const { isMobile, setOpenMobile } = useSidebar()
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -74,10 +90,10 @@ export function AppSidebar() {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          router.push("/login"); // redirect to login page
+          router.push("/sign-in")
         },
       },
-    });
+    })
   }
 
   return (
@@ -174,13 +190,15 @@ export function AppSidebar() {
               className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-auto w-full justify-start gap-3 px-2 py-2"
             >
               <Avatar className="size-9">
-                <AvatarImage src="/avatars/user.png" alt="Vantage user" />
-                <AvatarFallback>VT</AvatarFallback>
+                <AvatarImage src={user?.image ?? ""} alt={user?.name ?? "User"} />
+                <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
               </Avatar>
-              <span className="flex flex-col leading-none">
-                <span className="font-medium">Vantage User</span>
-                <span className="text-muted-foreground text-xs">
-                  user@vantage.app
+              <span className="flex min-w-0 flex-col leading-none">
+                <span className="truncate font-medium">
+                  {user?.name ?? "Vantage User"}
+                </span>
+                <span className="truncate text-muted-foreground text-xs">
+                  {user?.email ?? "user@vantage.app"}
                 </span>
               </span>
             </Button>

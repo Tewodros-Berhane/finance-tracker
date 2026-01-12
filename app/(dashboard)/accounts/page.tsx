@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation"
+
 import { Prisma } from "@/lib/generated/prisma/client"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getAccountsWithBalances } from "@/lib/services/account.service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,8 +11,12 @@ import { AccountCard } from "./_components/account-card"
 import { NetWorthCard } from "./_components/net-worth-card"
 
 export default async function AccountsPage() {
-  const userId = "demo-user"
-  const accounts = await getAccountsWithBalances(userId)
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
+  }
+
+  const accounts = await getAccountsWithBalances(user.id)
 
   const totalNetWorth = accounts.reduce(
     (total, account) =>
@@ -26,10 +33,7 @@ export default async function AccountsPage() {
             See every account and the balance in one place.
           </p>
         </div>
-        <AddAccountModal
-          userId={userId}
-          trigger={<Button size="sm">Add Account</Button>}
-        />
+        <AddAccountModal trigger={<Button size="sm">Add Account</Button>} />
       </header>
 
       <NetWorthCard total={totalNetWorth.toString()} />
@@ -40,16 +44,13 @@ export default async function AccountsPage() {
             <p className="text-sm text-muted-foreground">
               No accounts yet. Add your first account to start tracking.
             </p>
-            <AddAccountModal
-              userId={userId}
-              trigger={<Button variant="outline">Create Account</Button>}
-            />
+            <AddAccountModal trigger={<Button variant="outline">Create Account</Button>} />
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {accounts.map((account) => (
-            <AccountCard key={account.id} account={account} userId={userId} />
+            <AccountCard key={account.id} account={account} />
           ))}
         </div>
       )}

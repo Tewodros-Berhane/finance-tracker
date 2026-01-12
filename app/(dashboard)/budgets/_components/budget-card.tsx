@@ -38,7 +38,6 @@ type BudgetCardProps = {
     spent: string
     percentage: number
   }
-  userId: string
   currency?: string
 }
 
@@ -66,7 +65,7 @@ const formatCurrency = (value: number, currency: string) =>
     maximumFractionDigits: 2,
   }).format(value)
 
-export function BudgetCard({ budget, userId, currency = "USD" }: BudgetCardProps) {
+export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const spentValue = Number(budget.spent)
@@ -94,7 +93,7 @@ export function BudgetCard({ budget, userId, currency = "USD" }: BudgetCardProps
 
   const handleDelete = () => {
     startTransition(async () => {
-      const response = await deleteBudget({ userId, id: budget.id })
+      const response = await deleteBudget({ id: budget.id })
 
       if (!response.success) {
         toast.error(response.error ?? "Failed to delete budget.")

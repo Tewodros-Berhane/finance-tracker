@@ -55,7 +55,6 @@ type AccountCardProps = {
     icon: string
     currentBalance: string
   }
-  userId: string
 }
 
 const formatCurrency = (value: string, currency: string) => {
@@ -68,7 +67,7 @@ const formatCurrency = (value: string, currency: string) => {
   }).format(numericValue)
 }
 
-export function AccountCard({ account, userId }: AccountCardProps) {
+export function AccountCard({ account }: AccountCardProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const Icon = typeIcons[account.type] ?? Wallet
@@ -80,7 +79,7 @@ export function AccountCard({ account, userId }: AccountCardProps) {
 
   const handleDelete = () => {
     startTransition(async () => {
-      const response = await deleteAccount({ userId, id: account.id })
+      const response = await deleteAccount({ id: account.id })
 
       if (!response.success) {
         toast.error(response.error ?? "Failed to delete account.")

@@ -16,6 +16,7 @@ export type GoalWithAnalytics = {
   progressPercent: number
   daysRemaining: number | null
   requiredMonthlySaving: string | null
+  financialAccountId: string | null
   icon: string
   color: string
 }
@@ -52,6 +53,7 @@ export async function getGoalsWithAnalytics(
           targetAmount: true,
           currentAmount: true,
           deadline: true,
+          financialAccountId: true,
         },
         orderBy: { name: "asc" },
       })
@@ -89,6 +91,7 @@ export async function getGoalsWithAnalytics(
           progressPercent,
           daysRemaining,
           requiredMonthlySaving,
+          financialAccountId: goal.financialAccountId,
           icon: visual.icon,
           color: visual.color,
         }

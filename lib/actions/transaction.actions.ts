@@ -3,12 +3,11 @@
 import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { prisma } from "../prisma"
 import { createTransactionSchema } from "./transaction.schema"
-// export { createTransactionSchema } from "./transaction.schema"
 
 const deleteTransactionSchema = z.object({
-  userId: z.string().min(1),
   id: z.string().min(1),
 })
 
@@ -43,12 +42,17 @@ export async function createTransaction(
     }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const account = await prisma.financialAccount.findFirst({
     where: {
       id: data.financialAccountId,
-      userId: data.userId,
+      userId: user.id,
     },
     select: { id: true },
   })
@@ -65,7 +69,7 @@ export async function createTransaction(
     const category = await prisma.category.findFirst({
       where: {
         id: data.categoryId,
-        userId: data.userId,
+        userId: user.id,
       },
       select: { id: true },
     })
@@ -81,7 +85,7 @@ export async function createTransaction(
 
   const created = await prisma.transaction.create({
     data: {
-      userId: data.userId,
+      userId: user.id,
       financialAccountId: data.financialAccountId,
       categoryId: data.categoryId ?? null,
       type: data.type,
@@ -93,9 +97,9 @@ export async function createTransaction(
     select: { id: true },
   })
 
-  revalidateTag("transactions", "default")
-  revalidateTag("summary", "default")
-  revalidateTag(`account-${data.financialAccountId}`, "default")
+  revalidateTag("transactions")
+  revalidateTag("summary")
+  revalidateTag(`account-${data.financialAccountId}`)
   revalidatePath("/transactions")
 
   return {
@@ -118,12 +122,17 @@ export async function deleteTransaction(
     }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const existing = await prisma.transaction.findFirst({
     where: {
       id: data.id,
-      userId: data.userId,
+      userId: user.id,
     },
     select: { id: true, financialAccountId: true },
   })
@@ -139,13 +148,13 @@ export async function deleteTransaction(
   await prisma.transaction.deleteMany({
     where: {
       id: existing.id,
-      userId: data.userId,
+      userId: user.id,
     },
   })
 
-  revalidateTag("transactions", "default")
-  revalidateTag("summary", "default")
-  revalidateTag(`account-${existing.financialAccountId}`, "default")
+  revalidateTag("transactions")
+  revalidateTag("summary")
+  revalidateTag(`account-${existing.financialAccountId}`)
 
   return {
     success: true,

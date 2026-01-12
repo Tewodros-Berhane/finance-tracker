@@ -12,13 +12,11 @@ type CategoryListProps = {
     transactionCount: number
     monthlySpend: string
   }>
-  userId: string
   currency?: string
 }
 
 export function CategoryList({
   categories,
-  userId,
   currency,
 }: CategoryListProps) {
   return (
@@ -27,7 +25,6 @@ export function CategoryList({
         <CategoryCard
           key={category.id}
           category={category}
-          userId={userId}
           currency={currency}
         />
       ))}

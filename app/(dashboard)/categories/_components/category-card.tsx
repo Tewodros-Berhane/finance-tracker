@@ -38,7 +38,6 @@ type CategoryCardProps = {
     transactionCount: number
     monthlySpend: string
   }
-  userId: string
   currency?: string
 }
 
@@ -66,7 +65,6 @@ const formatCurrency = (value: number, currency: string) =>
 
 export function CategoryCard({
   category,
-  userId,
   currency = "USD",
 }: CategoryCardProps) {
   const router = useRouter()
@@ -77,7 +75,7 @@ export function CategoryCard({
 
   const handleDelete = () => {
     startTransition(async () => {
-      const response = await deleteCategory({ userId, id: category.id })
+      const response = await deleteCategory({ id: category.id })
 
       if (!response.success) {
         toast.error(response.error ?? "Failed to delete category.")
@@ -114,7 +112,6 @@ export function CategoryCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <CategoryForm
-              userId={userId}
               initialData={{
                 id: category.id,
                 name: category.name,

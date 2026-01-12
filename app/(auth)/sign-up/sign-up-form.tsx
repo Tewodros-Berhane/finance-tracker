@@ -43,7 +43,7 @@ export function SignUpForm() {
         fetchOptions: {
           onSuccess: () => {
             toast.success("Signed up successfully");
-            router.push("/");
+            router.push("/dashboard");
           },
           onError: (error) => {
             toast.error(error.error.message);

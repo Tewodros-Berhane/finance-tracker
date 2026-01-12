@@ -4,11 +4,11 @@ import { randomUUID } from "crypto"
 import { revalidateTag } from "next/cache"
 import { z } from "zod"
 
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { prisma } from "../prisma"
 import { upsertBudgetSchema } from "./budget.schema"
 
 const deleteBudgetSchema = z.object({
-  userId: z.string().min(1),
   id: z.string().min(1),
 })
 
@@ -39,6 +39,11 @@ export async function upsertBudget(
     return { success: false, data: null, error: "Invalid budget payload." }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
   const now = new Date()
   const month = now.getMonth() + 1
@@ -46,7 +51,7 @@ export async function upsertBudget(
 
   const existing = await prisma.budget.findFirst({
     where: {
-      userId: data.userId,
+      userId: user.id,
       categoryId: data.categoryId,
       month,
       year,
@@ -66,7 +71,7 @@ export async function upsertBudget(
     },
     create: {
       id: targetId,
-      userId: data.userId,
+      userId: user.id,
       categoryId: data.categoryId,
       amount: data.amount,
       month,
@@ -89,10 +94,15 @@ export async function deleteBudget(
     return { success: false, data: null, error: "Invalid delete payload." }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const existing = await prisma.budget.findFirst({
-    where: { id: data.id, userId: data.userId },
+    where: { id: data.id, userId: user.id },
     select: { id: true },
   })
 
@@ -101,7 +111,7 @@ export async function deleteBudget(
   }
 
   await prisma.budget.deleteMany({
-    where: { id: existing.id, userId: data.userId },
+    where: { id: existing.id, userId: user.id },
   })
 
   revalidateTag("budgets")

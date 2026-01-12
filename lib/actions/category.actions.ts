@@ -3,11 +3,11 @@
 import { revalidateTag } from "next/cache"
 import { z } from "zod"
 
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { prisma } from "../prisma"
 import { upsertCategorySchema } from "./category.schema"
 
 const deleteCategorySchema = z.object({
-  userId: z.string().min(1),
   id: z.string().min(1),
 })
 
@@ -66,11 +66,16 @@ export async function upsertCategory(
     return { success: false, data: null, error: "Invalid category payload." }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const duplicate = await prisma.category.findFirst({
     where: {
-      userId: data.userId,
+      userId: user.id,
       name: { equals: data.name, mode: "insensitive" },
       ...(data.id ? { NOT: { id: data.id } } : {}),
     },
@@ -83,7 +88,7 @@ export async function upsertCategory(
 
   if (data.id) {
     const existing = await prisma.category.findFirst({
-      where: { id: data.id, userId: data.userId },
+      where: { id: data.id, userId: user.id },
       select: { id: true },
     })
 
@@ -105,7 +110,7 @@ export async function upsertCategory(
       })
     : await prisma.category.create({
         data: {
-          userId: data.userId,
+          userId: user.id,
           name: data.name,
           type: data.type,
           icon: data.icon,
@@ -128,10 +133,15 @@ export async function deleteCategory(
     return { success: false, data: null, error: "Invalid delete payload." }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const existing = await prisma.category.findFirst({
-    where: { id: data.id, userId: data.userId },
+    where: { id: data.id, userId: user.id },
     select: { id: true },
   })
 
@@ -140,20 +150,20 @@ export async function deleteCategory(
   }
 
   const transactionCount = await prisma.transaction.count({
-    where: { userId: data.userId, categoryId: existing.id },
+    where: { userId: user.id, categoryId: existing.id },
   })
 
   if (transactionCount > 0) {
-    const uncategorizedId = await ensureUncategorized(data.userId)
+    const uncategorizedId = await ensureUncategorized(user.id)
 
     await prisma.transaction.updateMany({
-      where: { userId: data.userId, categoryId: existing.id },
+      where: { userId: user.id, categoryId: existing.id },
       data: { categoryId: uncategorizedId },
     })
   }
 
   await prisma.category.deleteMany({
-    where: { id: existing.id, userId: data.userId },
+    where: { id: existing.id, userId: user.id },
   })
 
   revalidateTag("categories")

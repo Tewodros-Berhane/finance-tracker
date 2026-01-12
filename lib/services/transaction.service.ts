@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache"
+import { endOfDay } from "date-fns"
 import type { Prisma } from "../generated/prisma/client"
 
 import { prisma } from "../prisma"
@@ -56,6 +57,13 @@ export type RecentTransaction = {
     name: string
     currency: string
   }
+}
+
+export type RecentTransactionFilters = {
+  limit?: number
+  accountId?: string
+  from?: Date
+  to?: Date
 }
 
 const buildWhereClause = (
@@ -179,14 +187,37 @@ export async function getTransactions(
 
 export async function getRecentTransactions(
   userId: string,
-  limit = 5
+  filters: RecentTransactionFilters = {}
 ): Promise<RecentTransaction[]> {
-  const cacheKey = ["recent-transactions", userId, String(limit)]
+  const limit = filters.limit ?? 5
+  const cacheKey = [
+    "recent-transactions",
+    userId,
+    JSON.stringify({
+      limit,
+      accountId: filters.accountId ?? "",
+      from: filters.from?.toISOString(),
+      to: filters.to?.toISOString(),
+    }),
+  ]
 
   const cached = unstable_cache(
     async () => {
+      const where: Prisma.TransactionWhereInput = { userId }
+
+      if (filters.accountId) {
+        where.financialAccountId = filters.accountId
+      }
+
+      if (filters.from || filters.to) {
+        where.date = {
+          ...(filters.from ? { gte: filters.from } : {}),
+          ...(filters.to ? { lte: endOfDay(filters.to) } : {}),
+        }
+      }
+
       const rows = await prisma.transaction.findMany({
-        where: { userId },
+        where,
         orderBy: { date: "desc" },
         take: limit,
         select: {

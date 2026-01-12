@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation"
+
 import { Prisma } from "@/lib/generated/prisma/client"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getGoalsWithAnalytics } from "@/lib/services/goal.service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,8 +11,12 @@ import { GoalForm } from "./_components/goal-form"
 import { GoalCard } from "./_components/goal-card"
 
 export default async function GoalsPage() {
-  const userId = "demo-user"
-  const goals = await getGoalsWithAnalytics(userId)
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
+  }
+
+  const goals = await getGoalsWithAnalytics(user.id)
 
   const totalSavings = goals.reduce(
     (total, goal) => total.plus(new Prisma.Decimal(goal.currentAmount)),
@@ -25,7 +32,7 @@ export default async function GoalsPage() {
             Track every milestone on your savings journey.
           </p>
         </div>
-        <GoalForm userId={userId} trigger={<Button size="sm">New Goal</Button>} />
+        <GoalForm trigger={<Button size="sm">New Goal</Button>} />
       </header>
 
       <Card>
@@ -61,7 +68,6 @@ export default async function GoalsPage() {
               </p>
             </div>
             <GoalForm
-              userId={userId}
               trigger={<Button variant="outline">Start Saving</Button>}
             />
           </CardContent>
@@ -69,7 +75,7 @@ export default async function GoalsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {goals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} userId={userId} />
+            <GoalCard key={goal.id} goal={goal} />
           ))}
         </div>
       )}

@@ -62,11 +62,10 @@ const accountSchema = z.object({
 type AccountFormValues = z.infer<typeof accountSchema>
 
 type AddAccountModalProps = {
-  userId: string
   trigger?: ReactNode
 }
 
-export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
+export function AddAccountModal({ trigger }: AddAccountModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -83,7 +82,6 @@ export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
   const handleSubmit = (values: AccountFormValues) => {
     startTransition(async () => {
       const response = await createAccount({
-        userId,
         name: values.name,
         type: values.type,
         currency: values.currency,
@@ -107,7 +105,7 @@ export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
       <DialogTrigger asChild>
         {trigger ?? <Button size="sm">Add Account</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-105">
         <DialogHeader>
           <DialogTitle>Add a new account</DialogTitle>
           <DialogDescription>
@@ -115,7 +113,10 @@ export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -135,10 +136,7 @@ export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Account type</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a type" />
@@ -162,10 +160,7 @@ export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Currency</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select currency" />
@@ -211,5 +206,5 @@ export function AddAccountModal({ userId, trigger }: AddAccountModalProps) {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

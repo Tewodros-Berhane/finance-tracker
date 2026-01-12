@@ -43,12 +43,11 @@ import { cn } from "@/lib/utils"
 
 import { IconPicker, iconOptions, type CategoryIcon } from "./icon-picker"
 
-const categorySchema = upsertCategorySchema.omit({ userId: true })
+const categorySchema = upsertCategorySchema
 
 type CategoryValues = z.infer<typeof categorySchema>
 
 type CategoryFormProps = {
-  userId: string
   trigger?: ReactNode
   initialData?: {
     id: string
@@ -77,14 +76,13 @@ const initialState: CategoryActionState = {
 }
 
 export function CategoryForm({
-  userId,
   trigger,
   initialData,
 }: CategoryFormProps) {
   const [open, setOpen] = useState(false)
   const [state, formAction, isPending] = useActionState<
     CategoryActionState,
-    CategoryValues & { userId: string }
+    CategoryValues
   >((_, payload) => upsertCategory(payload), initialState)
 
   const form = useForm<CategoryValues>({
@@ -124,10 +122,7 @@ export function CategoryForm({
   )
 
   const handleSubmit = (values: CategoryValues) => {
-    formAction({
-      userId,
-      ...values,
-    })
+    formAction(values)
   }
 
   return (

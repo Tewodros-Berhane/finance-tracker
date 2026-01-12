@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, Plus, Tag, Wallet } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useForm, type Resolver } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -45,7 +45,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-const transactionSchema = createTransactionSchema.omit({ userId: true })
+const transactionSchema = createTransactionSchema
 
 type TransactionValues = z.infer<typeof transactionSchema>
 
@@ -62,9 +62,8 @@ type CategoryOption = {
 }
 
 type AddTransactionModalProps = {
-  userId: string
-  accounts: AccountOption[]
-  categories: CategoryOption[]
+  accounts?: AccountOption[]
+  categories?: CategoryOption[]
   trigger?: ReactNode
 }
 
@@ -99,8 +98,6 @@ type TransactionActionState = {
   error: string | null
 }
 
-type TransactionPayload = TransactionValues & { userId: string }
-
 const initialState: TransactionActionState = {
   success: false,
   data: null,
@@ -117,19 +114,24 @@ export function AddTransactionTrigger() {
 }
 
 export function AddTransactionModal({
-  userId,
-  accounts,
-  categories,
+  accounts: accountsProp = [],
+  categories: categoriesProp = [],
   trigger,
 }: AddTransactionModalProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [accounts, setAccounts] = useState<AccountOption[]>(accountsProp)
+  const [categories, setCategories] = useState<CategoryOption[]>(categoriesProp)
+  const [accountsLoading, setAccountsLoading] = useState(false)
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [accountsRequested, setAccountsRequested] = useState(false)
+  const [categoriesRequested, setCategoriesRequested] = useState(false)
   const [state, formAction, isPending] = useActionState<
     TransactionActionState,
-    TransactionPayload
+    TransactionValues
   >((_, payload) => createTransaction(payload), initialState)
   const form = useForm<TransactionValues>({
-    resolver: zodResolver(transactionSchema) as Resolver<TransactionValues, any>,
+    resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: "EXPENSE",
       amount: "",
@@ -158,6 +160,109 @@ export function AddTransactionModal({
   }, [categories, selectedType])
 
   useEffect(() => {
+    if (accountsProp.length) {
+      setAccounts(accountsProp)
+    }
+  }, [accountsProp])
+
+  useEffect(() => {
+    if (categoriesProp.length) {
+      setCategories(categoriesProp)
+    }
+  }, [categoriesProp])
+
+  useEffect(() => {
+    if (!open) return
+
+    const fetchAccounts = async () => {
+      setAccountsLoading(true)
+      try {
+        const response = await fetch("/api/accounts")
+        const payload = (await response.json()) as {
+          success: boolean
+          data?: Array<{ id: string; name: string; currency?: string | null }>
+          error?: string | null
+        }
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error ?? "Failed to load accounts.")
+        }
+
+        const nextAccounts = Array.isArray(payload.data)
+          ? payload.data.map((account) => ({
+              id: account.id,
+              name: account.name,
+              currency: account.currency ?? "USD",
+            }))
+          : []
+
+        setAccounts(nextAccounts)
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load accounts."
+        toast.error(message)
+      } finally {
+        setAccountsLoading(false)
+      }
+    }
+
+    const fetchCategories = async () => {
+      setCategoriesLoading(true)
+      try {
+        const response = await fetch("/api/categories")
+        const payload = (await response.json()) as {
+          success: boolean
+          data?: Array<{ id: string; name: string; type: "INCOME" | "EXPENSE" }>
+          error?: string | null
+        }
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error ?? "Failed to load categories.")
+        }
+
+        setCategories(Array.isArray(payload.data) ? payload.data : [])
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load categories."
+        toast.error(message)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    if (!accountsLoading && !accountsRequested) {
+      setAccountsRequested(true)
+      fetchAccounts()
+    }
+
+    if (!categoriesLoading && !categoriesRequested) {
+      setCategoriesRequested(true)
+      fetchCategories()
+    }
+  }, [
+    accountsLoading,
+    accountsRequested,
+    categoriesLoading,
+    categoriesRequested,
+    open,
+  ])
+
+  useEffect(() => {
+    if (open) return
+    setAccountsRequested(false)
+    setCategoriesRequested(false)
+  }, [open])
+
+  useEffect(() => {
+    const currentAccountId = form.getValues("financialAccountId")
+    const hasAccount = accounts.some((account) => account.id === currentAccountId)
+
+    if (!hasAccount) {
+      form.setValue("financialAccountId", accounts[0]?.id ?? "")
+    }
+  }, [accounts, form])
+
+  useEffect(() => {
     if (selectedType === "TRANSFER") {
       form.setValue("categoryId", undefined)
     }
@@ -180,13 +285,14 @@ export function AddTransactionModal({
 
   const handleSubmit = (values: TransactionValues) => {
     formAction({
-      userId,
       ...values,
       amount: values.amount.trim(),
       categoryId:
         selectedType === "TRANSFER" ? undefined : values.categoryId || undefined,
     })
   }
+
+  const isSubmitDisabled = isPending || accounts.length === 0
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -262,14 +368,24 @@ export function AddTransactionModal({
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
                         <SelectContent>
-                          {accounts.map((account) => (
-                            <SelectItem key={account.id} value={account.id}>
-                              <div className="flex items-center gap-2">
-                                <Wallet className="size-4" />
-                                <span>{account.name}</span>
-                              </div>
+                          {accounts.length ? (
+                            accounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                <div className="flex items-center gap-2">
+                                  <Wallet className="size-4" />
+                                  <span>{account.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : accountsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading accounts...
                             </SelectItem>
-                          ))}
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              No accounts available
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -309,6 +425,10 @@ export function AddTransactionModal({
                                 </div>
                               </SelectItem>
                             ))
+                          ) : categoriesLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading categories...
+                            </SelectItem>
                           ) : (
                             <SelectItem value="empty" disabled>
                               No categories
@@ -393,7 +513,7 @@ export function AddTransactionModal({
             />
 
             <DialogFooter>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isSubmitDisabled}>
                 {isPending && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 )}

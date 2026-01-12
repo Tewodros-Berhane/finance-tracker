@@ -17,12 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const accountOptions = [
-  { value: "all", label: "All Accounts" },
-  { value: "main-checking", label: "Main Checking" },
-  { value: "cash", label: "Cash" },
-  { value: "savings", label: "Savings" },
-]
+type AccountOption = {
+  id: string
+  name: string
+}
+
+type DashboardFiltersProps = {
+  accounts: AccountOption[]
+}
 
 const formatParamDate = (date: Date) => format(date, "yyyy-MM-dd")
 
@@ -40,7 +42,7 @@ const getRangeFromParams = (params: URLSearchParams): DateRange | undefined => {
   return { from, to }
 }
 
-export function DashboardFilters() {
+export function DashboardFilters({ accounts }: DashboardFiltersProps) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
@@ -52,11 +54,28 @@ export function DashboardFilters() {
     searchParams.get("account") || "all"
   )
 
+  const accountOptions = React.useMemo(
+    () => [
+      { value: "all", label: "All Accounts" },
+      ...accounts.map((accountItem) => ({
+        value: accountItem.id,
+        label: accountItem.name,
+      })),
+    ],
+    [accounts]
+  )
+
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     setRange(getRangeFromParams(params))
-    setAccount(params.get("account") || "all")
-  }, [searchParams])
+
+    const nextAccount = params.get("account") || "all"
+    const isValid =
+      nextAccount === "all" ||
+      accounts.some((accountItem) => accountItem.id === nextAccount)
+
+    setAccount(isValid ? nextAccount : "all")
+  }, [accounts, searchParams])
 
   const updateParams = React.useCallback(
     (updates: { from?: string | null; to?: string | null; account?: string }) => {
@@ -125,11 +144,20 @@ export function DashboardFilters() {
     updateParams({ account: value })
   }
 
+  const handleClearFilters = () => {
+    setRange(undefined)
+    setAccount("all")
+    updateParams({ from: null, to: null, account: "all" })
+  }
+
   const rangeLabel = range?.from
     ? range.to
       ? `${format(range.from, "MMM dd")} - ${format(range.to, "MMM dd")}`
       : format(range.from, "MMM dd")
     : "Date range"
+
+  const hasActiveFilters =
+    !!range?.from || !!range?.to || (account && account !== "all")
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -188,7 +216,12 @@ export function DashboardFilters() {
           ))}
         </SelectContent>
       </Select>
+
+      {hasActiveFilters ? (
+        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+          Clear
+        </Button>
+      ) : null}
     </div>
   )
 }
-

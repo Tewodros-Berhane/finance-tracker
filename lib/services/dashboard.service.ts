@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache"
+import { endOfDay, endOfMonth, startOfMonth } from "date-fns"
 import { Prisma } from "../generated/prisma/client"
 
 import { prisma } from "../prisma"
@@ -25,9 +26,17 @@ type DashboardSummary = {
   cashFlow: CashFlowPoint[]
 }
 
-const getMonthRange = (reference = new Date()) => {
-  const start = new Date(reference.getFullYear(), reference.getMonth(), 1)
-  const end = new Date(reference.getFullYear(), reference.getMonth() + 1, 1)
+export type DashboardSummaryFilters = {
+  accountId?: string
+  from?: Date
+  to?: Date
+}
+
+const resolveRange = (filters: DashboardSummaryFilters) => {
+  const now = new Date()
+  const baseDate = filters.from ?? filters.to ?? now
+  const start = filters.from ?? startOfMonth(baseDate)
+  const end = filters.to ? endOfDay(filters.to) : endOfMonth(baseDate)
   return { start, end }
 }
 
@@ -62,26 +71,53 @@ const buildCashFlow = (
 }
 
 export async function getDashboardSummary(
-  userId: string
+  userId: string,
+  filters: DashboardSummaryFilters = {}
 ): Promise<DashboardSummary> {
-  const { start, end } = getMonthRange()
+  const { start, end } = resolveRange(filters)
+  const now = new Date()
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29)
-  const cacheKey = ["summary", userId, start.toISOString()]
+  const cashFlowStart = filters.from ?? thirtyDaysAgo
+  const cashFlowEnd = filters.to ? endOfDay(filters.to) : now
+  const accountFilter = filters.accountId
+    ? { financialAccountId: filters.accountId }
+    : {}
+  const accountBalanceFilter = filters.accountId
+    ? { id: filters.accountId }
+    : {}
+  const rangeFilter = { date: { gte: start, lte: end } }
+  const cacheKey = [
+    "summary",
+    userId,
+    JSON.stringify({
+      accountId: filters.accountId ?? "",
+      from: filters.from?.toISOString(),
+      to: filters.to?.toISOString(),
+    }),
+  ]
 
   const cached = unstable_cache(
     async () => {
-      const [balanceAgg, incomeAgg, expenseAgg, categoryGroups, cashFlowRows] =
-        await Promise.all([
+      const [
+        balanceAgg,
+        monthlyIncomeAgg,
+        monthlyExpenseAgg,
+        totalIncomeAgg,
+        totalExpenseAgg,
+        categoryGroups,
+        cashFlowRows,
+      ] = await Promise.all([
           prisma.financialAccount.aggregate({
-            where: { userId },
+            where: { userId, ...accountBalanceFilter },
             _sum: { balance: true },
           }),
           prisma.transaction.aggregate({
             where: {
               userId,
               type: "INCOME",
-              date: { gte: start, lt: end },
+              ...accountFilter,
+              ...rangeFilter,
             },
             _sum: { amount: true },
           }),
@@ -89,7 +125,24 @@ export async function getDashboardSummary(
             where: {
               userId,
               type: "EXPENSE",
-              date: { gte: start, lt: end },
+              ...accountFilter,
+              ...rangeFilter,
+            },
+            _sum: { amount: true },
+          }),
+          prisma.transaction.aggregate({
+            where: {
+              userId,
+              type: "INCOME",
+              ...accountFilter,
+            },
+            _sum: { amount: true },
+          }),
+          prisma.transaction.aggregate({
+            where: {
+              userId,
+              type: "EXPENSE",
+              ...accountFilter,
             },
             _sum: { amount: true },
           }),
@@ -98,14 +151,16 @@ export async function getDashboardSummary(
             where: {
               userId,
               type: "EXPENSE",
-              date: { gte: start, lt: end },
+              ...accountFilter,
+              ...rangeFilter,
             },
             _sum: { amount: true },
           }),
           prisma.transaction.findMany({
             where: {
               userId,
-              date: { gte: thirtyDaysAgo, lte: new Date() },
+              ...accountFilter,
+              date: { gte: cashFlowStart, lte: cashFlowEnd },
               type: { in: ["INCOME", "EXPENSE"] },
             },
             orderBy: { date: "asc" },
@@ -162,10 +217,21 @@ export async function getDashboardSummary(
         }
       })
 
+      const baseBalance = balanceAgg._sum.balance ?? new Prisma.Decimal(0)
+      const totalIncome = totalIncomeAgg._sum.amount ?? new Prisma.Decimal(0)
+      const totalExpense = totalExpenseAgg._sum.amount ?? new Prisma.Decimal(0)
+      const rangeIncome = monthlyIncomeAgg._sum.amount ?? new Prisma.Decimal(0)
+      const rangeExpense = monthlyExpenseAgg._sum.amount ?? new Prisma.Decimal(0)
+      const balanceDelta =
+        filters.from || filters.to
+          ? rangeIncome.minus(rangeExpense)
+          : totalIncome.minus(totalExpense)
+      const totalBalance = baseBalance.plus(balanceDelta)
+
       return {
-        totalBalance: balanceAgg._sum.balance?.toString() ?? "0",
-        monthlyIncome: incomeAgg._sum.amount?.toString() ?? "0",
-        monthlyExpenses: expenseAgg._sum.amount?.toString() ?? "0",
+        totalBalance: totalBalance.toString(),
+        monthlyIncome: monthlyIncomeAgg._sum.amount?.toString() ?? "0",
+        monthlyExpenses: monthlyExpenseAgg._sum.amount?.toString() ?? "0",
         categoryBreakdown,
         cashFlow: buildCashFlow(cashFlowRows),
       }

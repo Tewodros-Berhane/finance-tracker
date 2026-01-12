@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 import { useActionState, useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, Plus } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, Plus, Wallet } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -35,16 +35,22 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 import { GoalIconPicker, type GoalIcon } from "./goal-icon-picker"
 
-const goalSchema = upsertGoalSchema.omit({ userId: true })
+const goalSchema = upsertGoalSchema
 
 type GoalValues = z.infer<typeof goalSchema>
 
 type GoalFormProps = {
-  userId: string
   trigger?: ReactNode
   initialData?: {
     id: string
@@ -52,9 +58,15 @@ type GoalFormProps = {
     targetAmount: string
     currentAmount: string
     deadline?: string | null
+    financialAccountId?: string | null
     icon?: string
     color?: string
   }
+}
+
+type AccountOption = {
+  id: string
+  name: string
 }
 
 const colorOptions = [
@@ -72,11 +84,14 @@ const initialState: GoalActionState = {
   error: null,
 }
 
-export function GoalForm({ userId, trigger, initialData }: GoalFormProps) {
+export function GoalForm({ trigger, initialData }: GoalFormProps) {
   const [open, setOpen] = useState(false)
+  const [accounts, setAccounts] = useState<AccountOption[]>([])
+  const [accountsLoading, setAccountsLoading] = useState(false)
+  const [accountsRequested, setAccountsRequested] = useState(false)
   const [state, formAction, isPending] = useActionState<
     GoalActionState,
-    GoalValues & { userId: string }
+    GoalValues
   >((_, payload) => upsertGoal(payload), initialState)
 
   const form = useForm<GoalValues>({
@@ -87,6 +102,7 @@ export function GoalForm({ userId, trigger, initialData }: GoalFormProps) {
       targetAmount: initialData?.targetAmount ?? "",
       currentAmount: initialData?.currentAmount ?? "0",
       deadline: initialData?.deadline ? new Date(initialData.deadline) : undefined,
+      financialAccountId: initialData?.financialAccountId ?? "",
       icon: (initialData?.icon as GoalIcon) ?? "target",
       color: initialData?.color ?? colorOptions[0],
     },
@@ -94,6 +110,7 @@ export function GoalForm({ userId, trigger, initialData }: GoalFormProps) {
 
   const selectedColor = form.watch("color")
   const selectedIcon = form.watch("icon") as GoalIcon
+  const selectedAccountId = form.watch("financialAccountId")
 
   useEffect(() => {
     if (state.error) {
@@ -109,12 +126,60 @@ export function GoalForm({ userId, trigger, initialData }: GoalFormProps) {
     }
   }, [form, initialData, state.success])
 
+  useEffect(() => {
+    if (!open) return
+
+    const fetchAccounts = async () => {
+      setAccountsLoading(true)
+      try {
+        const response = await fetch("/api/accounts")
+        const payload = (await response.json()) as {
+          success: boolean
+          data?: Array<{ id: string; name: string }>
+          error?: string | null
+        }
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error ?? "Failed to load accounts.")
+        }
+
+        setAccounts(Array.isArray(payload.data) ? payload.data : [])
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load accounts."
+        toast.error(message)
+      } finally {
+        setAccountsLoading(false)
+      }
+    }
+
+    if (!accountsRequested) {
+      setAccountsRequested(true)
+      fetchAccounts()
+    }
+  }, [accountsRequested, open])
+
+  useEffect(() => {
+    if (open) return
+    setAccountsRequested(false)
+  }, [open])
+
+  useEffect(() => {
+    if (!accounts.length) return
+    const hasAccount = accounts.some(
+      (account) => account.id === selectedAccountId
+    )
+    if (!selectedAccountId || !hasAccount) {
+      form.setValue("financialAccountId", accounts[0]?.id ?? "")
+    }
+  }, [accounts, form, selectedAccountId])
+
   const handleSubmit = (values: GoalValues) => {
     formAction({
-      userId,
       ...values,
       targetAmount: values.targetAmount.trim(),
       currentAmount: values.currentAmount?.trim() ?? "0",
+      financialAccountId: values.financialAccountId || undefined,
     })
   }
 
@@ -188,6 +253,43 @@ export function GoalForm({ userId, trigger, initialData }: GoalFormProps) {
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="financialAccountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Funding account</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.length ? (
+                          accounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              <div className="flex items-center gap-2">
+                                <Wallet className="h-4 w-4" />
+                                <span>{account.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : accountsLoading ? (
+                          <SelectItem value="loading" disabled>
+                            Loading accounts...
+                          </SelectItem>
+                        ) : (
+                          <SelectItem value="empty" disabled>
+                            No accounts available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="deadline"

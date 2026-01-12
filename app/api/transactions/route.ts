@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { getTransactions } from "../../../lib/services/transaction.service"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { getTransactions } from "@/lib/services/transaction.service"
 
 const parseDateParam = (value: string | null): Date | undefined | null => {
   if (!value) return undefined
@@ -16,10 +17,10 @@ const parseDateParam = (value: string | null): Date | undefined | null => {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
 
-  const userId = request.headers.get("x-user-id") ?? searchParams.get("userId")
-  if (!userId) {
+  const user = await getAuthenticatedUser()
+  if (!user) {
     return NextResponse.json(
-      { success: false, data: null, error: "Missing userId." },
+      { success: false, data: null, error: "Unauthorized." },
       { status: 401 }
     )
   }
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
   const limit = limitParam ? Number(limitParam) : undefined
 
   try {
-    const data = await getTransactions(userId, {
+    const data = await getTransactions(user.id, {
       from: from ?? undefined,
       to: to ?? undefined,
       accountId: searchParams.get("accountId") ?? undefined,

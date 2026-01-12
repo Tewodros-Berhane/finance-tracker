@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache"
 import { Prisma } from "../generated/prisma/client"
 import { z } from "zod"
 
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { prisma } from "../prisma"
 import {
   upsertGoalSchema,
@@ -37,11 +38,16 @@ export async function upsertGoal(
     return { success: false, data: null, error: "Invalid goal payload." }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   if (data.id) {
     const existing = await prisma.goal.findFirst({
-      where: { id: data.id, userId: data.userId },
+      where: { id: data.id, userId: user.id },
       select: { id: true },
     })
 
@@ -49,6 +55,19 @@ export async function upsertGoal(
       return { success: false, data: null, error: "Goal not found." }
     }
   }
+
+  if (data.financialAccountId) {
+    const account = await prisma.financialAccount.findFirst({
+      where: { id: data.financialAccountId, userId: user.id },
+      select: { id: true },
+    })
+
+    if (!account) {
+      return { success: false, data: null, error: "Account not found." }
+    }
+  }
+
+  const currentAmount = new Prisma.Decimal(data.currentAmount ?? "0")
 
   const saved = data.id
     ? await prisma.goal.update({
@@ -58,21 +77,45 @@ export async function upsertGoal(
           targetAmount: data.targetAmount,
           currentAmount: data.currentAmount ?? "0",
           deadline: data.deadline ?? null,
+          financialAccountId: data.financialAccountId ?? undefined,
         },
         select: { id: true },
       })
     : await prisma.goal.create({
         data: {
-          userId: data.userId,
+          userId: user.id,
           name: data.name,
           targetAmount: data.targetAmount,
           currentAmount: data.currentAmount ?? "0",
           deadline: data.deadline ?? null,
+          financialAccountId: data.financialAccountId ?? null,
         },
         select: { id: true },
       })
 
+  if (!data.id && currentAmount.greaterThan(0) && data.financialAccountId) {
+    await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        financialAccountId: data.financialAccountId,
+        categoryId: null,
+        type: "TRANSFER",
+        amount: currentAmount.mul(-1).toString(),
+        date: new Date(),
+        description: `Added ${currentAmount.toString()} to goal ${data.name}`,
+        isRecurring: false,
+      },
+      select: { id: true },
+    })
+  }
+
   revalidateTag("goals")
+  revalidateTag("transactions")
+  revalidateTag("summary")
+  revalidateTag("accounts")
+  if (data.financialAccountId) {
+    revalidateTag(`account-${data.financialAccountId}`)
+  }
 
   return { success: true, data: { id: saved.id }, error: null }
 }
@@ -96,23 +139,38 @@ export async function updateGoalProgress(
     return { success: false, data: null, error: "Invalid contribution payload." }
   }
 
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." }
+  }
+
   const data = parsed.data
 
   const existing = await prisma.goal.findFirst({
-    where: { id: data.id, userId: data.userId },
-    select: { id: true, currentAmount: true },
+    where: { id: data.id, userId: user.id },
+    select: { id: true, name: true, currentAmount: true },
   })
 
   if (!existing) {
     return { success: false, data: null, error: "Goal not found." }
   }
 
+  const account = await prisma.financialAccount.findFirst({
+    where: { id: data.financialAccountId, userId: user.id },
+    select: { id: true },
+  })
+
+  if (!account) {
+    return { success: false, data: null, error: "Account not found." }
+  }
+
+  const contributionAmount = new Prisma.Decimal(data.amount)
   const newAmount = new Prisma.Decimal(existing.currentAmount)
-    .plus(new Prisma.Decimal(data.amount))
+    .plus(contributionAmount)
     .toString()
 
   const updated = await prisma.goal.updateMany({
-    where: { id: data.id, userId: data.userId },
+    where: { id: data.id, userId: user.id },
     data: { currentAmount: newAmount },
   })
 
@@ -120,7 +178,25 @@ export async function updateGoalProgress(
     return { success: false, data: null, error: "Unable to update goal." }
   }
 
+  await prisma.transaction.create({
+    data: {
+      userId: user.id,
+      financialAccountId: data.financialAccountId,
+      categoryId: null,
+      type: "TRANSFER",
+      amount: contributionAmount.mul(-1).toString(),
+      date: new Date(),
+      description: `Added ${contributionAmount.toString()} to goal ${existing.name}`,
+      isRecurring: false,
+    },
+    select: { id: true },
+  })
+
   revalidateTag("goals")
+  revalidateTag("transactions")
+  revalidateTag("summary")
+  revalidateTag("accounts")
+  revalidateTag(`account-${data.financialAccountId}`)
 
   return { success: true, data: { id: data.id }, error: null }
 }

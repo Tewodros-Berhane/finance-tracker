@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation"
+
 import { Prisma } from "@/lib/generated/prisma/client"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getBudgetsWithProgress } from "@/lib/services/budget.service"
 import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
@@ -12,12 +15,15 @@ import { BudgetCard } from "./_components/budget-card"
 import { BudgetStats } from "./_components/budget-stats"
 
 export default async function BudgetsPage() {
-  const userId = "demo-user"
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
+  }
 
   const [budgets, categories] = await Promise.all([
-    getBudgetsWithProgress(userId),
+    getBudgetsWithProgress(user.id),
     prisma.category.findMany({
-      where: { userId, type: "EXPENSE" },
+      where: { userId: user.id, type: "EXPENSE" },
       select: {
         id: true,
         name: true,
@@ -50,7 +56,6 @@ export default async function BudgetsPage() {
           </p>
         </div>
         <AddBudgetModal
-          userId={userId}
           categories={categories}
           trigger={<Button size="sm">Add Budget</Button>}
         />
@@ -85,7 +90,6 @@ export default async function BudgetsPage() {
               </p>
             </div>
             <AddBudgetModal
-              userId={userId}
               categories={categories}
               trigger={<Button variant="outline">Create Budget</Button>}
             />
@@ -95,7 +99,7 @@ export default async function BudgetsPage() {
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {budgets.map((budget) => (
-              <BudgetCard key={budget.id} budget={budget} userId={userId} />
+              <BudgetCard key={budget.id} budget={budget} />
             ))}
           </div>
         </ScrollArea>

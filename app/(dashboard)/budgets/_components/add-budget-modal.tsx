@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const budgetSchema = upsertBudgetSchema.omit({ userId: true })
+const budgetSchema = upsertBudgetSchema
 
 type BudgetValues = z.infer<typeof budgetSchema>
 
@@ -51,7 +51,6 @@ type CategoryOption = {
 }
 
 type AddBudgetModalProps = {
-  userId: string
   categories: CategoryOption[]
   trigger?: ReactNode
 }
@@ -63,14 +62,13 @@ const initialState: BudgetActionState = {
 }
 
 export function AddBudgetModal({
-  userId,
   categories,
   trigger,
 }: AddBudgetModalProps) {
   const [open, setOpen] = useState(false)
   const [state, formAction, isPending] = useActionState<
     BudgetActionState,
-    BudgetValues & { userId: string }
+    BudgetValues
   >((_, payload) => upsertBudget(payload), initialState)
 
   const form = useForm<BudgetValues>({
@@ -97,7 +95,6 @@ export function AddBudgetModal({
 
   const handleSubmit = (values: BudgetValues) => {
     formAction({
-      userId,
       categoryId: values.categoryId,
       amount: values.amount.trim(),
     })
