@@ -135,6 +135,7 @@ export function AddTransactionModal({
       amount: "",
       date: new Date(),
       financialAccountId: accounts[0]?.id ?? "",
+      transferAccountId: "",
       categoryId: undefined,
       description: "",
       isRecurring: false,
@@ -143,18 +144,23 @@ export function AddTransactionModal({
 
   const selectedType = form.watch("type")
   const selectedAccountId = form.watch("financialAccountId")
+  const selectedTransferAccountId = form.watch("transferAccountId")
   const selectedAccount = accounts.find(
     (account) => account.id === selectedAccountId
   )
   const currencySymbol =
     currencySymbols[selectedAccount?.currency || "USD"] || "$"
+  const availableTransferAccounts = useMemo(
+    () => accounts.filter((account) => account.id !== selectedAccountId),
+    [accounts, selectedAccountId]
+  )
 
   const filteredCategories = useMemo(() => {
-    if (selectedType === "TRANSFER") {
+    if (selectedType !== "EXPENSE") {
       return []
     }
 
-    return categories.filter((category) => category.type === selectedType)
+    return categories.filter((category) => category.type === "EXPENSE")
   }, [categories, selectedType])
 
   useEffect(() => {
@@ -261,7 +267,27 @@ export function AddTransactionModal({
   }, [accounts, form])
 
   useEffect(() => {
-    if (selectedType === "TRANSFER") {
+    if (selectedType !== "TRANSFER") {
+      form.setValue("transferAccountId", undefined)
+      return
+    }
+
+    const hasTransferAccount = availableTransferAccounts.some(
+      (account) => account.id === selectedTransferAccountId
+    )
+
+    if (!hasTransferAccount) {
+      form.setValue("transferAccountId", availableTransferAccounts[0]?.id ?? "")
+    }
+  }, [
+    availableTransferAccounts,
+    form,
+    selectedTransferAccountId,
+    selectedType,
+  ])
+
+  useEffect(() => {
+    if (selectedType !== "EXPENSE") {
       form.setValue("categoryId", undefined)
     }
   }, [form, selectedType])
@@ -285,12 +311,19 @@ export function AddTransactionModal({
     formAction({
       ...values,
       amount: values.amount.trim(),
-      categoryId:
-        selectedType === "TRANSFER" ? undefined : values.categoryId || undefined,
+      categoryId: selectedType === "EXPENSE" ? values.categoryId || undefined : undefined,
+      transferAccountId:
+        selectedType === "TRANSFER" ? values.transferAccountId || undefined : undefined,
     })
   }
 
-  const isSubmitDisabled = isPending || accounts.length === 0
+  const isSubmitDisabled =
+    isPending ||
+    accounts.length === 0 ||
+    (selectedType === "TRANSFER" &&
+      (!selectedTransferAccountId ||
+        selectedTransferAccountId === selectedAccountId ||
+        availableTransferAccounts.length === 0))
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -350,96 +383,181 @@ export function AddTransactionModal({
               )}
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="financialAccountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Account</FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.length ? (
-                            accounts.map((account) => (
-                              <SelectItem key={account.id} value={account.id}>
-                                <div className="flex items-center gap-2">
-                                  <Wallet className="size-4" />
-                                  <span>{account.name}</span>
-                                </div>
+            {selectedType === "TRANSFER" ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="financialAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>From account</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts.length ? (
+                              accounts.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Wallet className="size-4" />
+                                    <span>{account.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            ) : accountsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading accounts...
                               </SelectItem>
-                            ))
-                          ) : accountsLoading ? (
-                            <SelectItem value="loading" disabled>
-                              Loading accounts...
-                            </SelectItem>
-                          ) : (
-                            <SelectItem value="empty" disabled>
-                              No accounts available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                            ) : (
+                              <SelectItem value="empty" disabled>
+                                No accounts available
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="transferAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>To account</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableTransferAccounts.length ? (
+                              availableTransferAccounts.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Wallet className="size-4" />
+                                    <span>{account.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            ) : accountsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading accounts...
+                              </SelectItem>
+                            ) : (
+                              <SelectItem value="empty" disabled>
+                                No destination accounts
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="financialAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts.length ? (
+                              accounts.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Wallet className="size-4" />
+                                    <span>{account.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            ) : accountsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading accounts...
+                              </SelectItem>
+                            ) : (
+                              <SelectItem value="empty" disabled>
+                                No accounts available
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={field.onChange}
-                        disabled={selectedType === "TRANSFER"}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue
-                            placeholder={
-                              selectedType === "TRANSFER"
-                                ? "Not applicable"
-                                : "Select category"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredCategories.length ? (
-                            filteredCategories.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                <div className="flex items-center gap-2">
-                                  <Tag className="size-4" />
-                                  <span>{category.name}</span>
-                                </div>
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={field.onChange}
+                          disabled={selectedType !== "EXPENSE"}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={
+                                selectedType !== "EXPENSE"
+                                  ? "Not applicable"
+                                  : "Select category"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredCategories.length ? (
+                              filteredCategories.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="size-4" />
+                                    <span>{category.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            ) : categoriesLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading categories...
                               </SelectItem>
-                            ))
-                          ) : categoriesLoading ? (
-                            <SelectItem value="loading" disabled>
-                              Loading categories...
-                            </SelectItem>
-                          ) : (
-                            <SelectItem value="empty" disabled>
-                              No categories
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                            ) : (
+                              <SelectItem value="empty" disabled>
+                                No categories
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             <FormField
               control={form.control}

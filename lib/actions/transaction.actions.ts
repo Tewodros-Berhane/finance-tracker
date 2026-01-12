@@ -2,8 +2,10 @@
 
 import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
+import { Prisma } from "../generated/prisma/client"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { updateAccountBalance } from "@/lib/services/account.service"
 import { prisma } from "../prisma"
 import { createTransactionSchema } from "./transaction.schema"
 
@@ -49,6 +51,104 @@ export async function createTransaction(
 
   const data = parsed.data
 
+  if (data.type === "TRANSFER") {
+    if (!data.transferAccountId) {
+      return {
+        success: false,
+        data: null,
+        error: "Destination account is required.",
+      }
+    }
+
+    if (data.transferAccountId === data.financialAccountId) {
+      return {
+        success: false,
+        data: null,
+        error: "Transfer accounts must be different.",
+      }
+    }
+
+    const [fromAccount, toAccount] = await Promise.all([
+      prisma.financialAccount.findFirst({
+        where: {
+          id: data.financialAccountId,
+          userId: user.id,
+        },
+        select: { id: true, name: true, balance: true },
+      }),
+      prisma.financialAccount.findFirst({
+        where: {
+          id: data.transferAccountId,
+          userId: user.id,
+        },
+        select: { id: true, name: true, balance: true },
+      }),
+    ])
+
+    if (!fromAccount || !toAccount) {
+      return {
+        success: false,
+        data: null,
+        error: "Account not found.",
+      }
+    }
+
+    const amount = new Prisma.Decimal(data.amount)
+    const description = data.description?.trim()
+    let created: { id: string }
+
+    try {
+      created = await prisma.$transaction(async (tx) => {
+        const transaction = await tx.transaction.create({
+          data: {
+            userId: user.id,
+            financialAccountId: fromAccount.id,
+            categoryId: null,
+            type: "TRANSFER",
+            amount: amount.toString(),
+            date: data.date,
+            description: description ?? `Transfer to ${toAccount.name}`,
+            isRecurring: data.isRecurring,
+          },
+          select: { id: true },
+        })
+
+        const fromBalance = new Prisma.Decimal(fromAccount.balance).minus(amount)
+        const toBalance = new Prisma.Decimal(toAccount.balance).plus(amount)
+
+        const [fromUpdated, toUpdated] = await Promise.all([
+          updateAccountBalance(user.id, fromAccount.id, fromBalance, tx),
+          updateAccountBalance(user.id, toAccount.id, toBalance, tx),
+        ])
+
+        if (!fromUpdated || !toUpdated) {
+          throw new Error("Unable to update account balances.")
+        }
+
+        return transaction
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to complete transfer."
+      return { success: false, data: null, error: message }
+    }
+
+    revalidateTag("transactions", "max")
+    revalidateTag("summary", "max")
+    revalidateTag("accounts", "max")
+    revalidateTag(`account-${fromAccount.id}`, "max")
+    revalidateTag(`account-${toAccount.id}`, "max")
+    revalidatePath("/transactions")
+    revalidatePath("/accounts")
+    revalidatePath("/dashboard")
+
+    return {
+      success: true,
+      data: { id: created.id },
+      error: null,
+    }
+  }
+
   const account = await prisma.financialAccount.findFirst({
     where: {
       id: data.financialAccountId,
@@ -65,11 +165,12 @@ export async function createTransaction(
     }
   }
 
-  if (data.categoryId) {
+  if (data.categoryId && data.type === "EXPENSE") {
     const category = await prisma.category.findFirst({
       where: {
         id: data.categoryId,
         userId: user.id,
+        type: "EXPENSE",
       },
       select: { id: true },
     })
@@ -87,7 +188,7 @@ export async function createTransaction(
     data: {
       userId: user.id,
       financialAccountId: data.financialAccountId,
-      categoryId: data.categoryId ?? null,
+      categoryId: data.type === "EXPENSE" ? data.categoryId ?? null : null,
       type: data.type,
       amount: data.amount,
       date: data.date,

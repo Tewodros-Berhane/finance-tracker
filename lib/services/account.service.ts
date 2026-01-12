@@ -31,8 +31,7 @@ export async function getAccountsWithBalances(
 
   const cached = unstable_cache(
     async () => {
-      const [accounts, incomeGroups, expenseGroups, transferInGroups, transferOutGroups] =
-        await Promise.all([
+      const [accounts, incomeGroups, expenseGroups] = await Promise.all([
           prisma.financialAccount.findMany({
             where: { userId },
             select: {
@@ -56,30 +55,10 @@ export async function getAccountsWithBalances(
             where: { userId, type: "EXPENSE" },
             _sum: { amount: true },
           }),
-          prisma.transaction.groupBy({
-            by: ["financialAccountId"],
-            where: {
-              userId,
-              type: "TRANSFER",
-              amount: { gt: new Prisma.Decimal(0) },
-            },
-            _sum: { amount: true },
-          }),
-          prisma.transaction.groupBy({
-            by: ["financialAccountId"],
-            where: {
-              userId,
-              type: "TRANSFER",
-              amount: { lt: new Prisma.Decimal(0) },
-            },
-            _sum: { amount: true },
-          }),
         ])
 
       const incomeMap = toDecimalMap(incomeGroups)
       const expenseMap = toDecimalMap(expenseGroups)
-      const transferInMap = toDecimalMap(transferInGroups)
-      const transferOutMap = toDecimalMap(transferOutGroups)
 
       const zero = new Prisma.Decimal(0)
 
@@ -87,17 +66,10 @@ export async function getAccountsWithBalances(
         const base = new Prisma.Decimal(account.balance)
         const income = incomeMap.get(account.id) ?? zero
         const expense = expenseMap.get(account.id) ?? zero
-        const transferIn = transferInMap.get(account.id) ?? zero
-        const transferOutRaw = transferOutMap.get(account.id) ?? zero
-        const transferOut = transferOutRaw.isNegative()
-          ? transferOutRaw.abs()
-          : transferOutRaw
 
         const currentBalance = base
           .plus(income)
-          .plus(transferIn)
           .minus(expense)
-          .minus(transferOut)
 
         return {
           id: account.id,
@@ -115,4 +87,21 @@ export async function getAccountsWithBalances(
   )
 
   return cached()
+}
+
+type PrismaClientLike = typeof prisma | Prisma.TransactionClient
+
+export async function updateAccountBalance(
+  userId: string,
+  accountId: string,
+  balance: Prisma.Decimal | string,
+  db: PrismaClientLike = prisma
+): Promise<boolean> {
+  const nextBalance = new Prisma.Decimal(balance).toString()
+  const updated = await db.financialAccount.updateMany({
+    where: { id: accountId, userId },
+    data: { balance: nextBalance },
+  })
+
+  return updated.count > 0
 }
