@@ -1,28 +1,28 @@
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
 
-import { Prisma } from "@prisma/client";
-import { getAuthenticatedUser } from "@/lib/services/auth.service";
-import { getBudgetsWithProgress } from "@/lib/services/budget.service";
-import { getUserCurrencySettings } from "@/lib/services/user.service";
-import { prisma } from "@/lib/prisma";
-import { createMetadata } from "@/lib/seo";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet } from "lucide-react";
+import { Prisma } from "@/lib/generated/prisma/client"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { getBudgetsWithProgress } from "@/lib/services/budget.service"
+import { getUserCurrencySettings } from "@/lib/services/user.service"
+import { prisma } from "@/lib/prisma"
+import { createMetadata } from "@/lib/seo"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Wallet } from "lucide-react"
 
-import { AddBudgetModal } from "./_components/add-budget-modal";
-import { BudgetCard } from "./_components/budget-card";
-import { BudgetStats } from "./_components/budget-stats";
+import { AddBudgetModal } from "./_components/add-budget-modal"
+import { BudgetCard } from "./_components/budget-card"
+import { BudgetStats } from "./_components/budget-stats"
 
 export const metadata = createMetadata({
   title: "Budgets",
   description: "Set monthly limits and track spending by category.",
   canonical: "/budgets",
-});
+})
 
 function BudgetsSkeleton() {
   return (
@@ -41,13 +41,13 @@ function BudgetsSkeleton() {
         <Skeleton className="h-40" />
       </div>
     </div>
-  );
+  )
 }
 
 async function BudgetsContent() {
-  const user = await getAuthenticatedUser();
+  const user = await getAuthenticatedUser()
   if (!user) {
-    redirect("/sign-in");
+    redirect("/sign-in")
   }
 
   const [budgets, categories, currencySettings] = await Promise.all([
@@ -62,20 +62,20 @@ async function BudgetsContent() {
       orderBy: { name: "asc" },
     }),
     getUserCurrencySettings(user.id),
-  ]);
+  ])
 
   const totalBudgeted = budgets.reduce(
     (total, budget) => total.plus(new Prisma.Decimal(budget.limit)),
     new Prisma.Decimal(0)
-  );
+  )
   const totalSpent = budgets.reduce(
     (total, budget) => total.plus(new Prisma.Decimal(budget.spent)),
     new Prisma.Decimal(0)
-  );
+  )
 
   const overBudgetCount = budgets.filter(
     (budget) => Number(budget.spent) > Number(budget.limit)
-  ).length;
+  ).length
 
   return (
     <div className="flex flex-col gap-6">
@@ -104,9 +104,7 @@ async function BudgetsContent() {
         <Alert variant="destructive">
           <AlertTitle>Budget warning</AlertTitle>
           <AlertDescription>
-            {overBudgetCount}{" "}
-            {overBudgetCount === 1 ? "category is" : "categories are"} over
-            budget this month.
+            {overBudgetCount} {overBudgetCount === 1 ? "category is" : "categories are"} over budget this month.
           </AlertDescription>
         </Alert>
       )}
@@ -143,7 +141,7 @@ async function BudgetsContent() {
         </ScrollArea>
       )}
     </div>
-  );
+  )
 }
 
 export default function BudgetsPage() {
@@ -151,5 +149,5 @@ export default function BudgetsPage() {
     <Suspense fallback={<BudgetsSkeleton />}>
       <BudgetsContent />
     </Suspense>
-  );
+  )
 }

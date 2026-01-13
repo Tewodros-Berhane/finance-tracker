@@ -1,25 +1,25 @@
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
 
-import { Prisma } from "@prisma/client";
-import { getAuthenticatedUser } from "@/lib/services/auth.service";
-import { getGoalsWithAnalytics } from "@/lib/services/goal.service";
-import { getUserCurrencySettings } from "@/lib/services/user.service";
-import { formatCurrency } from "@/lib/format";
-import { createMetadata } from "@/lib/seo";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PiggyBank } from "lucide-react";
+import { Prisma } from "@/lib/generated/prisma/client"
+import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { getGoalsWithAnalytics } from "@/lib/services/goal.service"
+import { getUserCurrencySettings } from "@/lib/services/user.service"
+import { formatCurrency } from "@/lib/format"
+import { createMetadata } from "@/lib/seo"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { PiggyBank } from "lucide-react"
 
-import { GoalForm } from "./_components/goal-form";
-import { GoalCard } from "./_components/goal-card";
+import { GoalForm } from "./_components/goal-form"
+import { GoalCard } from "./_components/goal-card"
 
 export const metadata = createMetadata({
   title: "Goals",
   description: "Track savings goals and contributions over time.",
   canonical: "/goals",
-});
+})
 
 function GoalsSkeleton() {
   return (
@@ -38,24 +38,24 @@ function GoalsSkeleton() {
         <Skeleton className="h-44" />
       </div>
     </div>
-  );
+  )
 }
 
 async function GoalsContent() {
-  const user = await getAuthenticatedUser();
+  const user = await getAuthenticatedUser()
   if (!user) {
-    redirect("/sign-in");
+    redirect("/sign-in")
   }
 
   const [goals, currencySettings] = await Promise.all([
     getGoalsWithAnalytics(user.id),
     getUserCurrencySettings(user.id),
-  ]);
+  ])
 
   const totalSavings = goals.reduce(
     (total, goal) => total.plus(new Prisma.Decimal(goal.currentAmount)),
     new Prisma.Decimal(0)
-  );
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -118,7 +118,7 @@ async function GoalsContent() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
 export default function GoalsPage() {
@@ -126,5 +126,5 @@ export default function GoalsPage() {
     <Suspense fallback={<GoalsSkeleton />}>
       <GoalsContent />
     </Suspense>
-  );
+  )
 }
