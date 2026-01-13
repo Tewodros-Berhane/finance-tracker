@@ -1,25 +1,26 @@
-import { Suspense } from "react"
-import { redirect } from "next/navigation"
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
-import { Prisma } from "@/lib/generated/prisma/client"
-import { getAuthenticatedUser } from "@/lib/services/auth.service"
-import { getAccountsWithBalances } from "@/lib/services/account.service"
-import { convertToBaseCurrency } from "@/lib/services/currency.service"
-import { getUserCurrencySettings } from "@/lib/services/user.service"
-import { createMetadata } from "@/lib/seo"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Prisma } from "@prisma/client";
+import { getAuthenticatedUser } from "@/lib/services/auth.service";
+import { getAccountsWithBalances } from "@/lib/services/account.service";
+import { convertToBaseCurrency } from "@/lib/services/currency.service";
+import { getUserCurrencySettings } from "@/lib/services/user.service";
+import { createMetadata } from "@/lib/seo";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import { AddAccountModal } from "./_components/add-account-modal"
-import { AccountCard } from "./_components/account-card"
-import { NetWorthCard } from "./_components/net-worth-card"
+import { AddAccountModal } from "./_components/add-account-modal";
+import { AccountCard } from "./_components/account-card";
+import { NetWorthCard } from "./_components/net-worth-card";
 
 export const metadata = createMetadata({
   title: "Accounts",
-  description: "Monitor balances across your checking, savings, and credit accounts.",
+  description:
+    "Monitor balances across your checking, savings, and credit accounts.",
   canonical: "/accounts",
-})
+});
 
 function AccountsSkeleton() {
   return (
@@ -38,29 +39,29 @@ function AccountsSkeleton() {
         <Skeleton className="h-40" />
       </div>
     </div>
-  )
+  );
 }
 
 async function AccountsContent() {
-  const user = await getAuthenticatedUser()
+  const user = await getAuthenticatedUser();
   if (!user) {
-    redirect("/sign-in")
+    redirect("/sign-in");
   }
 
   const [accounts, currencySettings] = await Promise.all([
     getAccountsWithBalances(user.id),
     getUserCurrencySettings(user.id),
-  ])
+  ]);
 
   const totalNetWorth = accounts.reduce((total, account) => {
-    const amount = new Prisma.Decimal(account.currentBalance)
+    const amount = new Prisma.Decimal(account.currentBalance);
     const converted = convertToBaseCurrency(
       amount,
       account.currency,
       currencySettings
-    )
-    return total.plus(converted)
-  }, new Prisma.Decimal(0))
+    );
+    return total.plus(converted);
+  }, new Prisma.Decimal(0));
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,7 +86,9 @@ async function AccountsContent() {
             <p className="text-sm text-muted-foreground">
               No accounts yet. Add your first account to start tracking.
             </p>
-            <AddAccountModal trigger={<Button variant="outline">Create Account</Button>} />
+            <AddAccountModal
+              trigger={<Button variant="outline">Create Account</Button>}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -96,7 +99,7 @@ async function AccountsContent() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export default function AccountsPage() {
@@ -104,5 +107,5 @@ export default function AccountsPage() {
     <Suspense fallback={<AccountsSkeleton />}>
       <AccountsContent />
     </Suspense>
-  )
+  );
 }
