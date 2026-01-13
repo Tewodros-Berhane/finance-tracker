@@ -1,26 +1,26 @@
-import { unstable_cache } from "next/cache";
-import { endOfMonth, startOfMonth } from "date-fns";
-import { Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache"
+import { endOfMonth, startOfMonth } from "date-fns"
+import { Prisma } from "../generated/prisma/client"
 
-import { prisma } from "../prisma";
+import { prisma } from "../prisma"
 
 export type CategoryWithStats = {
-  id: string;
-  name: string;
-  type: "INCOME" | "EXPENSE";
-  color: string;
-  icon: string;
-  transactionCount: number;
-  monthlySpend: string;
-};
+  id: string
+  name: string
+  type: "INCOME" | "EXPENSE"
+  color: string
+  icon: string
+  transactionCount: number
+  monthlySpend: string
+}
 
 export async function getCategoriesWithStats(
   userId: string
 ): Promise<CategoryWithStats[]> {
-  const now = new Date();
-  const start = startOfMonth(now);
-  const end = endOfMonth(now);
-  const cacheKey = ["categories", userId, start.toISOString()];
+  const now = new Date()
+  const start = startOfMonth(now)
+  const end = endOfMonth(now)
+  const cacheKey = ["categories", userId, start.toISOString()]
 
   const cached = unstable_cache(
     async () => {
@@ -37,9 +37,9 @@ export async function getCategoriesWithStats(
           },
         },
         orderBy: { name: "asc" },
-      });
+      })
 
-      const categoryIds = categories.map((category) => category.id);
+      const categoryIds = categories.map((category) => category.id)
       const monthlyExpenseGroups = categoryIds.length
         ? await prisma.transaction.groupBy({
             by: ["categoryId"],
@@ -51,14 +51,14 @@ export async function getCategoriesWithStats(
             },
             _sum: { amount: true },
           })
-        : [];
+        : []
 
       const monthlySpendMap = new Map(
         monthlyExpenseGroups.map((group) => [
           group.categoryId ?? "",
           group._sum.amount ?? new Prisma.Decimal(0),
         ])
-      );
+      )
 
       return categories.map((category) => ({
         id: category.id,
@@ -67,12 +67,13 @@ export async function getCategoriesWithStats(
         color: category.color,
         icon: category.icon,
         transactionCount: category._count.transactions,
-        monthlySpend: monthlySpendMap.get(category.id)?.toString() ?? "0",
-      }));
+        monthlySpend:
+          monthlySpendMap.get(category.id)?.toString() ?? "0",
+      }))
     },
     cacheKey,
     { tags: ["categories"] }
-  );
+  )
 
-  return cached();
+  return cached()
 }
