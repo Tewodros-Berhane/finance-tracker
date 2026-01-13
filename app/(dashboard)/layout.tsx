@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { redirect } from "next/navigation"
-
+import { ModeToggle } from "@/components/modules/dark-mode-toggle";
 import { AddTransactionModal } from "../(dashboard)/transactions/_components/add-transaction-modal"
 import { AppSidebar } from "@/components/modules/app-sidebar"
 import { CurrencyRefresh } from "@/components/modules/currency-refresh"
@@ -88,10 +88,11 @@ export default async function DashboardLayout({
                 </Button>
               }
             />
+            <ModeToggle />
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }
