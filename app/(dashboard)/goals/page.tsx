@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-import { Prisma } from "../../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { getAuthenticatedUser } from "@/lib/services/auth.service";
 import { getGoalsWithAnalytics } from "@/lib/services/goal.service";
 import { getUserCurrencySettings } from "@/lib/services/user.service";

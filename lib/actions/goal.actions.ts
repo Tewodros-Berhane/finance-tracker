@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service";

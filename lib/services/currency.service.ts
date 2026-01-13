@@ -1,4 +1,4 @@
-import { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 
 export type BaseCurrency = "USD" | "BIRR";
 
