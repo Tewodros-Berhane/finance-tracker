@@ -34,12 +34,8 @@ const nextConfig: NextConfig = {
         destination: "/sign-up",
         permanent: true,
       },
-    ];
+    ]
   },
-  outputFileTracingIncludes: {
-    "/api/**/*": ["./lib/generated/prisma/**/*"],
-    "/(dashboard)/**/*": ["./lib/generated/prisma/**/*"], // Add other route groups as needed
-  },
-};
+}
 
 export default nextConfig
