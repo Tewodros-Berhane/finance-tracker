@@ -85,7 +85,7 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className="h-9"
           >
-            <X className="size-4" />
+            {/* <X className="size-4" /> */}
             Clear
           </Button>
         )}

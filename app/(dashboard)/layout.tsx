@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 
 import { AddTransactionModal } from "../(dashboard)/transactions/_components/add-transaction-modal"
 import { AppSidebar } from "@/components/modules/app-sidebar"
+import { CurrencyRefresh } from "@/components/modules/currency-refresh"
 import { DashboardBreadcrumbs } from "@/components/modules/dashboard-breadcrumbs"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -70,6 +71,7 @@ export default async function DashboardLayout({
     }))
   return (
     <SidebarProvider>
+      <CurrencyRefresh />
       <AppSidebar user={user} />
       <SidebarInset>
         <header className="bg-background/80 sticky top-0 z-10 flex h-14 items-center gap-3 border-b px-4 backdrop-blur">

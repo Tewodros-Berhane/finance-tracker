@@ -47,6 +47,16 @@ export function DataTableFacetedFilter<TData, TValue>({
     column?.setFilterValue(values.length ? values : undefined)
   }
 
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+    value: string
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      toggleValue(value)
+    }
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -67,20 +77,27 @@ export function DataTableFacetedFilter<TData, TValue>({
             const Icon = option.icon
 
             return (
-              <button
-                type="button"
+              <div
                 key={option.value}
                 onClick={() => toggleValue(option.value)}
+                onKeyDown={(event) => handleKeyDown(event, option.value)}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
                 className={cn(
                   "hover:bg-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm",
                   isSelected && "bg-accent"
                 )}
               >
-                <Checkbox checked={isSelected} aria-hidden />
+                <Checkbox
+                  checked={isSelected}
+                  aria-hidden
+                  className="pointer-events-none"
+                />
                 {Icon && <Icon className="text-muted-foreground size-4" />}
                 <span className="flex-1 text-left">{option.label}</span>
                 {isSelected && <Check className="text-muted-foreground size-4" />}
-              </button>
+              </div>
             )
           })}
         </div>
@@ -88,4 +105,3 @@ export function DataTableFacetedFilter<TData, TValue>({
     </Popover>
   )
 }
-

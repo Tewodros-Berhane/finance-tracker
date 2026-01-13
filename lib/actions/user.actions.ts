@@ -129,6 +129,12 @@ export async function updateCurrencySettings(
   revalidateTag("budgets", "max")
   revalidateTag("goals", "max")
   revalidatePath("/settings")
+  revalidatePath("/dashboard")
+  revalidatePath("/transactions")
+  revalidatePath("/accounts")
+  revalidatePath("/budgets")
+  revalidatePath("/goals")
+  revalidatePath("/categories")
 
   return { success: true, data: { id: updated.id }, error: null }
 }

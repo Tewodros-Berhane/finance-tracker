@@ -1,8 +1,9 @@
 "use client"
 
-import { useActionState, useEffect } from "react"
+import { useActionState, useEffect, useTransition } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Coins, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -55,6 +56,8 @@ export function CurrencyForm({
   baseCurrency,
   exchangeRate,
 }: CurrencyFormProps) {
+  const router = useRouter()
+  const [, startTransition] = useTransition()
   const [state, formAction, isPending] = useActionState<
     CurrencyActionState,
     CurrencyValues
@@ -76,13 +79,17 @@ export function CurrencyForm({
   useEffect(() => {
     if (state.success) {
       toast.success("Currency settings updated.")
+      window.localStorage.setItem("vantage:currency-version", String(Date.now()))
+      router.refresh()
     }
-  }, [state.success])
+  }, [router, state.success])
 
   const handleSubmit = (values: CurrencyValues) => {
-    formAction({
-      baseCurrency: values.baseCurrency,
-      exchangeRate: values.exchangeRate.trim(),
+    startTransition(() => {
+      formAction({
+        baseCurrency: values.baseCurrency,
+        exchangeRate: values.exchangeRate.trim(),
+      })
     })
   }
 
