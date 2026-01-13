@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { endOfDay, endOfMonth, startOfMonth } from "date-fns";
-import { Prisma } from "../../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
 
 import { prisma } from "../prisma";
 import { convertToBaseCurrency } from "./currency.service";

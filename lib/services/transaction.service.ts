@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { endOfDay } from "date-fns";
-import type { Prisma } from "../../../prisma/@/lib/generated/prisma/client";
+import type { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
 
 import { prisma } from "../prisma";
 

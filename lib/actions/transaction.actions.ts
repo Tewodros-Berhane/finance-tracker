@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import { Prisma } from "../../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service";
 import { updateAccountBalance } from "@/lib/services/account.service";

@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 
-import { Prisma } from "../../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
 import { prisma } from "../prisma";
 
 export type UserSettings = {

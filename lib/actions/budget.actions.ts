@@ -5,7 +5,7 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service";
-import { Prisma } from "../../../prisma/@/lib/generated/prisma/client";
+import { Prisma } from "./../../prisma/@/lib/generated/prisma/client";
 import { prisma } from "../prisma";
 import { convertFromBaseCurrency } from "../services/currency.service";
 import { getUserCurrencySettings } from "../services/user.service";
