@@ -11,7 +11,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { AccountType } from "../../../prisma/@/lib/generated/prisma/client";
+import type { AccountType } from "../../../../prisma/@/lib/generated/prisma/client";
 import { deleteAccount } from "@/lib/actions/account.actions";
 import { formatCurrency } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
