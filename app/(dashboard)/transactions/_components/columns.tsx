@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 export type TransactionRow = {
@@ -55,13 +56,6 @@ const categoryIconMap = {
   tag: Tag,
   wallet: Wallet,
 } satisfies Record<string, typeof Tag>
-
-const formatCurrency = (value: string, currency = "USD") =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(value))
 
 export const columns: ColumnDef<TransactionRow>[] = [
   {
@@ -190,7 +184,9 @@ export const columns: ColumnDef<TransactionRow>[] = [
     cell: ({ row }) => {
       const type = row.original.type
       const currency = row.original.accountCurrency ?? "USD"
-      const formatted = formatCurrency(row.original.amount, currency)
+      const formatted = formatCurrency(row.original.amount, currency, {
+        maximumFractionDigits: 2,
+      })
 
       return (
         <div

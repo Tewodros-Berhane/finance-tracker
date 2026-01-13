@@ -6,6 +6,7 @@ import { createMetadata } from "@/lib/seo"
 import { getBudgetsWithProgress } from "@/lib/services/budget.service"
 import { getSummary } from "@/lib/services/dashboard.service"
 import { getRecentTransactions } from "@/lib/services/transaction.service"
+import { getUserCurrencySettings } from "@/lib/services/user.service"
 import { prisma } from "@/lib/prisma"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -21,8 +22,6 @@ export const metadata = createMetadata({
   description: "View balances, spending trends, and cash flow at a glance.",
   canonical: "/dashboard",
 })
-
-const currency = "USD"
 
 const budgetIconMap: Record<string, BudgetIconKey> = {
   shopping: "shopping",
@@ -105,7 +104,8 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
     from,
     to,
   }
-  const [summary, recent, accounts, budgets] = await Promise.all([
+  const [summary, recent, accounts, budgets, currencySettings] =
+    await Promise.all([
     getSummary(userId, summaryFilters),
     getRecentTransactions(userId, { limit: 5, ...summaryFilters }),
     prisma.financialAccount.findMany({
@@ -117,6 +117,7 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
       orderBy: { name: "asc" },
     }),
     getBudgetsWithProgress(userId, summaryFilters),
+    getUserCurrencySettings(userId),
   ])
 
   const recentTransactions = recent.map((transaction) => ({
@@ -128,6 +129,7 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
     amount: Number(transaction.amount),
     type: transaction.type,
     icon: transaction.category?.icon,
+    currency: transaction.financialAccount.currency ?? currencySettings.baseCurrency,
   }))
 
   const budgetAlerts = budgets.map((budget) => ({
@@ -159,19 +161,25 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
         totalBalance={Number(summary.totalBalance)}
         monthlyIncome={Number(summary.monthlyIncome)}
         monthlyExpenses={Number(summary.monthlyExpenses)}
-        currency={currency}
+        currency={currencySettings.baseCurrency}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <CashFlowChart data={summary.cashFlow} />
-        <CategoryBreakdown data={categoryData} currency={currency} />
+        <CategoryBreakdown
+          data={categoryData}
+          currency={currencySettings.baseCurrency}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RecentTransactions data={recentTransactions} currency={currency} />
+          <RecentTransactions data={recentTransactions} />
         </div>
-        <DashboardBudgets data={budgetAlerts} currency={currency} />
+        <DashboardBudgets
+          data={budgetAlerts}
+          currency={currencySettings.baseCurrency}
+        />
       </div>
     </div>
   )

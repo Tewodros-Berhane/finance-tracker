@@ -1,11 +1,15 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
 import { Prisma } from "@/lib/generated/prisma/client"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getAccountsWithBalances } from "@/lib/services/account.service"
+import { convertToBaseCurrency } from "@/lib/services/currency.service"
+import { getUserCurrencySettings } from "@/lib/services/user.service"
 import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { AddAccountModal } from "./_components/add-account-modal"
 import { AccountCard } from "./_components/account-card"
@@ -17,19 +21,46 @@ export const metadata = createMetadata({
   canonical: "/accounts",
 })
 
-export default async function AccountsPage() {
+function AccountsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <Skeleton className="h-28 w-full" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+      </div>
+    </div>
+  )
+}
+
+async function AccountsContent() {
   const user = await getAuthenticatedUser()
   if (!user) {
     redirect("/sign-in")
   }
 
-  const accounts = await getAccountsWithBalances(user.id)
+  const [accounts, currencySettings] = await Promise.all([
+    getAccountsWithBalances(user.id),
+    getUserCurrencySettings(user.id),
+  ])
 
-  const totalNetWorth = accounts.reduce(
-    (total, account) =>
-      total.plus(new Prisma.Decimal(account.currentBalance)),
-    new Prisma.Decimal(0)
-  )
+  const totalNetWorth = accounts.reduce((total, account) => {
+    const amount = new Prisma.Decimal(account.currentBalance)
+    const converted = convertToBaseCurrency(
+      amount,
+      account.currency,
+      currencySettings
+    )
+    return total.plus(converted)
+  }, new Prisma.Decimal(0))
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,7 +74,10 @@ export default async function AccountsPage() {
         <AddAccountModal trigger={<Button size="sm">Add Account</Button>} />
       </header>
 
-      <NetWorthCard total={totalNetWorth.toString()} />
+      <NetWorthCard
+        total={totalNetWorth.toString()}
+        currency={currencySettings.baseCurrency}
+      />
 
       {accounts.length === 0 ? (
         <Card>
@@ -62,5 +96,13 @@ export default async function AccountsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function AccountsPage() {
+  return (
+    <Suspense fallback={<AccountsSkeleton />}>
+      <AccountsContent />
+    </Suspense>
   )
 }

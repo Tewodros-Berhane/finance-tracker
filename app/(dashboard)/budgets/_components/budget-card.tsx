@@ -15,6 +15,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
 import { deleteBudget } from "@/lib/actions/budget.actions"
+import { formatCurrency } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -57,13 +58,6 @@ const iconMap: Record<string, typeof Tag> = {
   uncategorized: Receipt,
   tag: Tag,
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value)
 
 export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
   const router = useRouter()
@@ -118,8 +112,13 @@ export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
           <div className="space-y-1">
             <p className="text-sm font-semibold">{budget.categoryName}</p>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(spentValue, currency)} /{" "}
-              {formatCurrency(limitValue, currency)}
+              {formatCurrency(spentValue, currency, {
+                maximumFractionDigits: 2,
+              })}{" "}
+              /{" "}
+              {formatCurrency(limitValue, currency, {
+                maximumFractionDigits: 2,
+              })}
             </p>
           </div>
         </div>
@@ -155,8 +154,12 @@ export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
         />
         <p className="text-xs text-muted-foreground">
           {remaining >= 0
-            ? `You have ${formatCurrency(remaining, currency)} remaining this month.`
-            : `Over by ${formatCurrency(Math.abs(remaining), currency)} this month.`}
+            ? `You have ${formatCurrency(remaining, currency, {
+                maximumFractionDigits: 2,
+              })} remaining this month.`
+            : `Over by ${formatCurrency(Math.abs(remaining), currency, {
+                maximumFractionDigits: 2,
+              })} this month.`}
         </p>
       </CardContent>
     </Card>

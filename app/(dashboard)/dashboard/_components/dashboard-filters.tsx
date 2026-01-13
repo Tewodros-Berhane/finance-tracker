@@ -46,6 +46,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
+  const [, startTransition] = React.useTransition()
 
   const [range, setRange] = React.useState<DateRange | undefined>(() =>
     getRangeFromParams(new URLSearchParams(searchParams.toString()))
@@ -106,9 +107,11 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
       }
 
       const query = params.toString()
-      router.push(query ? `${pathname}?${query}` : pathname)
+      startTransition(() => {
+        router.push(query ? `${pathname}?${query}` : pathname)
+      })
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams, startTransition]
   )
 
   const handleRangeSelect = (nextRange: DateRange | undefined) => {

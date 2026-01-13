@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
 import { deleteCategory } from "@/lib/actions/category.actions"
+import { formatCurrency } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -55,13 +56,6 @@ const iconMap: Record<string, typeof Tag> = {
   receipt: Receipt,
   tag: Tag,
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value)
 
 export function CategoryCard({
   category,
@@ -138,7 +132,10 @@ export function CategoryCard({
           {category.transactionCount === 1 ? "transaction" : "transactions"}
         </p>
         <p className="text-sm font-medium">
-          {formatCurrency(monthlySpend, currency)} spent this month
+          {formatCurrency(monthlySpend, currency, {
+            maximumFractionDigits: 2,
+          })}{" "}
+          spent this month
         </p>
       </CardContent>
     </Card>

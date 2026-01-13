@@ -1,14 +1,17 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
 import { Prisma } from "@/lib/generated/prisma/client"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getBudgetsWithProgress } from "@/lib/services/budget.service"
+import { getUserCurrencySettings } from "@/lib/services/user.service"
 import { prisma } from "@/lib/prisma"
 import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Wallet } from "lucide-react"
 
 import { AddBudgetModal } from "./_components/add-budget-modal"
@@ -21,13 +24,33 @@ export const metadata = createMetadata({
   canonical: "/budgets",
 })
 
-export default async function BudgetsPage() {
+function BudgetsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <Skeleton className="h-24 w-full" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+      </div>
+    </div>
+  )
+}
+
+async function BudgetsContent() {
   const user = await getAuthenticatedUser()
   if (!user) {
     redirect("/sign-in")
   }
 
-  const [budgets, categories] = await Promise.all([
+  const [budgets, categories, currencySettings] = await Promise.all([
     getBudgetsWithProgress(user.id),
     prisma.category.findMany({
       where: { userId: user.id, type: "EXPENSE" },
@@ -38,6 +61,7 @@ export default async function BudgetsPage() {
       },
       orderBy: { name: "asc" },
     }),
+    getUserCurrencySettings(user.id),
   ])
 
   const totalBudgeted = budgets.reduce(
@@ -72,6 +96,7 @@ export default async function BudgetsPage() {
         <BudgetStats
           totalBudgeted={totalBudgeted.toString()}
           totalSpent={totalSpent.toString()}
+          currency={currencySettings.baseCurrency}
         />
       )}
 
@@ -106,11 +131,23 @@ export default async function BudgetsPage() {
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {budgets.map((budget) => (
-              <BudgetCard key={budget.id} budget={budget} />
+              <BudgetCard
+                key={budget.id}
+                budget={budget}
+                currency={currencySettings.baseCurrency}
+              />
             ))}
           </div>
         </ScrollArea>
       )}
     </div>
+  )
+}
+
+export default function BudgetsPage() {
+  return (
+    <Suspense fallback={<BudgetsSkeleton />}>
+      <BudgetsContent />
+    </Suspense>
   )
 }

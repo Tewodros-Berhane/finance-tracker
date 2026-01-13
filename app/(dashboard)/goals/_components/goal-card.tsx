@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 import { ContributionModal } from "./contribution-modal"
@@ -41,13 +42,6 @@ const iconMap: Record<string, typeof Trophy> = {
   home: Home,
   wallet: Wallet,
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value)
 
 export function GoalCard({ goal, currency = "USD" }: GoalCardProps) {
   const current = Number(goal.currentAmount)
@@ -103,8 +97,13 @@ export function GoalCard({ goal, currency = "USD" }: GoalCardProps) {
           <div>
             <p className="text-muted-foreground text-xs">Amount saved</p>
             <p className="font-medium">
-              {formatCurrency(current, currency)} /{" "}
-              {formatCurrency(target, currency)}
+              {formatCurrency(current, currency, {
+                maximumFractionDigits: 2,
+              })}{" "}
+              /{" "}
+              {formatCurrency(target, currency, {
+                maximumFractionDigits: 2,
+              })}
             </p>
           </div>
           <div className="text-right">
@@ -119,8 +118,10 @@ export function GoalCard({ goal, currency = "USD" }: GoalCardProps) {
         {goal.requiredMonthlySaving && !achieved && (
           <p className="text-xs text-muted-foreground">
             Save{" "}
-            {formatCurrency(Number(goal.requiredMonthlySaving), currency)}/mo to
-            reach this.
+            {formatCurrency(Number(goal.requiredMonthlySaving), currency, {
+              maximumFractionDigits: 2,
+            })}
+            /mo to reach this.
           </p>
         )}
       </CardContent>

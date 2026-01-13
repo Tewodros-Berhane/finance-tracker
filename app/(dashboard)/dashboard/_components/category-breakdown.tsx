@@ -9,6 +9,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { formatCurrency } from "@/lib/format"
 
 type CategoryDatum = {
   category: string
@@ -33,13 +34,6 @@ type CategoryBreakdownProps = {
   data: CategoryDatum[]
   currency?: string
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value)
 
 export function CategoryBreakdown({
   data,
@@ -86,7 +80,7 @@ export function CategoryBreakdown({
               Total spend
             </p>
             <p className="text-xl font-semibold">
-              {formatCurrency(total, currency)}
+              {formatCurrency(total, currency, { maximumFractionDigits: 0 })}
             </p>
           </div>
           <div className="space-y-3">
@@ -106,7 +100,9 @@ export function CategoryBreakdown({
                   <span>{item.category}</span>
                 </div>
                 <span className="text-muted-foreground">
-                  {formatCurrency(item.value, currency)}
+                  {formatCurrency(item.value, currency, {
+                    maximumFractionDigits: 0,
+                  })}
                 </span>
               </div>
             ))}
@@ -116,4 +112,3 @@ export function CategoryBreakdown({
     </Card>
   )
 }
-

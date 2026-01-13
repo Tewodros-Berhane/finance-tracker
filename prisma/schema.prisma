@@ -20,6 +20,8 @@ model User {
   email         String
   emailVerified Boolean   @default(false)
   image         String?
+  baseCurrency  BaseCurrency @default(USD)
+  usdToBirrRate Decimal   @default(120)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
@@ -94,6 +96,11 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
+}
+
+enum BaseCurrency {
+  USD
+  BIRR
 }
 
 enum CategoryType {

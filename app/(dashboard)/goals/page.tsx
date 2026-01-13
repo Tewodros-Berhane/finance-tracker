@@ -1,11 +1,15 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
 import { Prisma } from "@/lib/generated/prisma/client"
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
 import { getGoalsWithAnalytics } from "@/lib/services/goal.service"
+import { getUserCurrencySettings } from "@/lib/services/user.service"
+import { formatCurrency } from "@/lib/format"
 import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { PiggyBank } from "lucide-react"
 
 import { GoalForm } from "./_components/goal-form"
@@ -17,13 +21,36 @@ export const metadata = createMetadata({
   canonical: "/goals",
 })
 
-export default async function GoalsPage() {
+function GoalsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <Skeleton className="h-24 w-full" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-44" />
+        <Skeleton className="h-44" />
+        <Skeleton className="h-44" />
+      </div>
+    </div>
+  )
+}
+
+async function GoalsContent() {
   const user = await getAuthenticatedUser()
   if (!user) {
     redirect("/sign-in")
   }
 
-  const goals = await getGoalsWithAnalytics(user.id)
+  const [goals, currencySettings] = await Promise.all([
+    getGoalsWithAnalytics(user.id),
+    getUserCurrencySettings(user.id),
+  ])
 
   const totalSavings = goals.reduce(
     (total, goal) => total.plus(new Prisma.Decimal(goal.currentAmount)),
@@ -49,11 +76,11 @@ export default async function GoalsPage() {
               Total Savings
             </p>
             <p className="text-2xl font-semibold">
-              {new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-                maximumFractionDigits: 2,
-              }).format(Number(totalSavings))}
+              {formatCurrency(
+                Number(totalSavings),
+                currencySettings.baseCurrency,
+                { maximumFractionDigits: 2 }
+              )}
             </p>
           </div>
           <span className="bg-muted flex size-12 items-center justify-center rounded-full">
@@ -82,10 +109,22 @@ export default async function GoalsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {goals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} />
+            <GoalCard
+              key={goal.id}
+              goal={goal}
+              currency={currencySettings.baseCurrency}
+            />
           ))}
         </div>
       )}
     </div>
+  )
+}
+
+export default function GoalsPage() {
+  return (
+    <Suspense fallback={<GoalsSkeleton />}>
+      <GoalsContent />
+    </Suspense>
   )
 }

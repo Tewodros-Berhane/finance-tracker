@@ -3,6 +3,11 @@ import { endOfDay, endOfMonth, startOfMonth } from "date-fns"
 import { Prisma } from "../generated/prisma/client"
 
 import { prisma } from "../prisma"
+import {
+  convertToBaseCurrency,
+  type CurrencySettings,
+} from "./currency.service"
+import { getUserCurrencySettings } from "./user.service"
 
 type CategoryBreakdownItem = {
   categoryId: string | null
@@ -41,7 +46,7 @@ const resolveRange = (filters: DashboardSummaryFilters) => {
 }
 
 const buildCashFlow = (
-  transactions: { date: Date; amount: Prisma.Decimal; type: "INCOME" | "EXPENSE" | "TRANSFER" }[]
+  transactions: { date: Date; amount: Prisma.Decimal; type: "INCOME" | "EXPENSE" }[]
 ): CashFlowPoint[] => {
   const formatter = new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -68,6 +73,24 @@ const buildCashFlow = (
     income: totals.income,
     expenses: totals.expenses,
   }))
+}
+
+const sumGroupsToBase = (
+  groups: {
+    financialAccountId: string
+    _sum: { amount: Prisma.Decimal | null }
+  }[],
+  accountMap: Map<string, { currency: string | null }>,
+  settings: CurrencySettings
+) => {
+  const zero = new Prisma.Decimal(0)
+
+  return groups.reduce((total, group) => {
+    const amount = group._sum.amount ?? zero
+    const currency = accountMap.get(group.financialAccountId)?.currency
+    const converted = convertToBaseCurrency(amount, currency, settings)
+    return total.plus(converted)
+  }, zero)
 }
 
 export async function getDashboardSummary(
@@ -99,20 +122,26 @@ export async function getDashboardSummary(
 
   const cached = unstable_cache(
     async () => {
+      const currencySettings = await getUserCurrencySettings(userId)
       const [
-        balanceAgg,
-        monthlyIncomeAgg,
-        monthlyExpenseAgg,
-        totalIncomeAgg,
-        totalExpenseAgg,
-        categoryGroups,
+        accounts,
+        rangeIncomeGroups,
+        rangeExpenseGroups,
+        totalIncomeGroups,
+        totalExpenseGroups,
+        categoryAccountGroups,
         cashFlowRows,
       ] = await Promise.all([
-          prisma.financialAccount.aggregate({
+          prisma.financialAccount.findMany({
             where: { userId, ...accountBalanceFilter },
-            _sum: { balance: true },
+            select: {
+              id: true,
+              balance: true,
+              currency: true,
+            },
           }),
-          prisma.transaction.aggregate({
+          prisma.transaction.groupBy({
+            by: ["financialAccountId"],
             where: {
               userId,
               type: "INCOME",
@@ -121,7 +150,8 @@ export async function getDashboardSummary(
             },
             _sum: { amount: true },
           }),
-          prisma.transaction.aggregate({
+          prisma.transaction.groupBy({
+            by: ["financialAccountId"],
             where: {
               userId,
               type: "EXPENSE",
@@ -130,7 +160,8 @@ export async function getDashboardSummary(
             },
             _sum: { amount: true },
           }),
-          prisma.transaction.aggregate({
+          prisma.transaction.groupBy({
+            by: ["financialAccountId"],
             where: {
               userId,
               type: "INCOME",
@@ -138,7 +169,8 @@ export async function getDashboardSummary(
             },
             _sum: { amount: true },
           }),
-          prisma.transaction.aggregate({
+          prisma.transaction.groupBy({
+            by: ["financialAccountId"],
             where: {
               userId,
               type: "EXPENSE",
@@ -147,7 +179,7 @@ export async function getDashboardSummary(
             _sum: { amount: true },
           }),
           prisma.transaction.groupBy({
-            by: ["categoryId"],
+            by: ["categoryId", "financialAccountId"],
             where: {
               userId,
               type: "EXPENSE",
@@ -168,13 +200,32 @@ export async function getDashboardSummary(
               date: true,
               amount: true,
               type: true,
+              financialAccount: {
+                select: { currency: true },
+              },
             },
           }),
         ])
 
-      const categoryIds = categoryGroups
-        .map((group) => group.categoryId)
-        .filter((id): id is string => Boolean(id))
+      const accountMap = new Map(
+        accounts.map((account) => [account.id, { currency: account.currency }])
+      )
+
+      const categoryTotals = new Map<string | null, Prisma.Decimal>()
+      const zero = new Prisma.Decimal(0)
+
+      categoryAccountGroups.forEach((group) => {
+        const amount = group._sum.amount ?? zero
+        const currency = accountMap.get(group.financialAccountId)?.currency
+        const converted = convertToBaseCurrency(amount, currency, currencySettings)
+        const key = group.categoryId
+        const existing = categoryTotals.get(key) ?? zero
+        categoryTotals.set(key, existing.plus(converted))
+      })
+
+      const categoryIds = Array.from(categoryTotals.keys()).filter(
+        (id): id is string => Boolean(id)
+      )
 
       const categories = categoryIds.length
         ? await prisma.category.findMany({
@@ -193,47 +244,85 @@ export async function getDashboardSummary(
 
       const categoryMap = new Map(categories.map((item) => [item.id, item]))
 
-      const categoryBreakdown = categoryGroups.map((group) => {
-        const total = group._sum.amount?.toString() ?? "0"
+      const categoryBreakdown = Array.from(categoryTotals.entries()).map(
+        ([categoryId, totalAmount]) => {
+          const total = totalAmount.toString()
 
-        if (!group.categoryId) {
+          if (!categoryId) {
+            return {
+              categoryId: null,
+              name: "Uncategorized",
+              icon: "tag",
+              color: "#64748b",
+              total,
+            }
+          }
+
+          const category = categoryMap.get(categoryId)
+
           return {
-            categoryId: null,
-            name: "Uncategorized",
-            icon: "tag",
-            color: "#64748b",
+            categoryId,
+            name: category?.name ?? "Unknown",
+            icon: category?.icon ?? "tag",
+            color: category?.color ?? "#64748b",
             total,
           }
         }
+      )
 
-        const category = categoryMap.get(group.categoryId)
+      const balanceBase = accounts.reduce((total, account) => {
+        const amount = new Prisma.Decimal(account.balance ?? 0)
+        const converted = convertToBaseCurrency(
+          amount,
+          account.currency,
+          currencySettings
+        )
+        return total.plus(converted)
+      }, new Prisma.Decimal(0))
 
-        return {
-          categoryId: group.categoryId,
-          name: category?.name ?? "Unknown",
-          icon: category?.icon ?? "tag",
-          color: category?.color ?? "#64748b",
-          total,
-        }
-      })
+      const rangeIncome = sumGroupsToBase(
+        rangeIncomeGroups,
+        accountMap,
+        currencySettings
+      )
+      const rangeExpense = sumGroupsToBase(
+        rangeExpenseGroups,
+        accountMap,
+        currencySettings
+      )
+      const totalIncome = sumGroupsToBase(
+        totalIncomeGroups,
+        accountMap,
+        currencySettings
+      )
+      const totalExpense = sumGroupsToBase(
+        totalExpenseGroups,
+        accountMap,
+        currencySettings
+      )
 
-      const baseBalance = balanceAgg._sum.balance ?? new Prisma.Decimal(0)
-      const totalIncome = totalIncomeAgg._sum.amount ?? new Prisma.Decimal(0)
-      const totalExpense = totalExpenseAgg._sum.amount ?? new Prisma.Decimal(0)
-      const rangeIncome = monthlyIncomeAgg._sum.amount ?? new Prisma.Decimal(0)
-      const rangeExpense = monthlyExpenseAgg._sum.amount ?? new Prisma.Decimal(0)
       const balanceDelta =
         filters.from || filters.to
           ? rangeIncome.minus(rangeExpense)
           : totalIncome.minus(totalExpense)
-      const totalBalance = baseBalance.plus(balanceDelta)
+      const totalBalance = balanceBase.plus(balanceDelta)
+
+      const cashFlow = cashFlowRows.map((row) => ({
+        date: row.date,
+        type: row.type,
+        amount: convertToBaseCurrency(
+          row.amount,
+          row.financialAccount.currency,
+          currencySettings
+        ),
+      }))
 
       return {
         totalBalance: totalBalance.toString(),
-        monthlyIncome: monthlyIncomeAgg._sum.amount?.toString() ?? "0",
-        monthlyExpenses: monthlyExpenseAgg._sum.amount?.toString() ?? "0",
+        monthlyIncome: rangeIncome.toString(),
+        monthlyExpenses: rangeExpense.toString(),
         categoryBreakdown,
-        cashFlow: buildCashFlow(cashFlowRows),
+        cashFlow: buildCashFlow(cashFlow),
       }
     },
     cacheKey,

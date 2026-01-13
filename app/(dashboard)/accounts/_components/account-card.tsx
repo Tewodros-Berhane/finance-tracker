@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner"
 import type { AccountType } from "@/lib/generated/prisma/client"
 import { deleteAccount } from "@/lib/actions/account.actions"
+import { formatCurrency } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -55,16 +56,6 @@ type AccountCardProps = {
     icon: string
     currentBalance: string
   }
-}
-
-const formatCurrency = (value: string, currency: string) => {
-  const numericValue = Number(value)
-  if (Number.isNaN(numericValue)) return value
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(numericValue)
 }
 
 export function AccountCard({ account }: AccountCardProps) {

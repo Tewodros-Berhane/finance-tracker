@@ -4,13 +4,18 @@ import { siteConfig } from "@/lib/seo"
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
-
-  return [
+  const staticRoutes = [
     {
-      url: `${siteConfig.url}/`,
-      lastModified: now,
-      changeFrequency: "weekly",
+      path: "/",
+      changeFrequency: "weekly" as const,
       priority: 1,
     },
   ]
+
+  return staticRoutes.map((route) => ({
+    url: new URL(route.path, siteConfig.url).toString(),
+    lastModified: now,
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
+  }))
 }

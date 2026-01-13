@@ -6,6 +6,8 @@ import {
 import { Prisma } from "../generated/prisma/client"
 
 import { prisma } from "../prisma"
+import { convertToBaseCurrency } from "./currency.service"
+import { getUserCurrencySettings } from "./user.service"
 
 export type GoalWithAnalytics = {
   id: string
@@ -45,6 +47,7 @@ export async function getGoalsWithAnalytics(
 
   const cached = unstable_cache(
     async () => {
+      const currencySettings = await getUserCurrencySettings(userId)
       const goals = await prisma.goal.findMany({
         where: { userId },
         select: {
@@ -59,26 +62,44 @@ export async function getGoalsWithAnalytics(
       })
 
       return goals.map((goal) => {
-        const target = new Prisma.Decimal(goal.targetAmount)
-        const current = new Prisma.Decimal(goal.currentAmount)
-        const progressPercent = target.isZero()
+        const targetUsd = new Prisma.Decimal(goal.targetAmount)
+        const currentUsd = new Prisma.Decimal(goal.currentAmount)
+        const progressPercent = targetUsd.isZero()
           ? 0
-          : current.div(target).times(100).toNumber()
+          : currentUsd.div(targetUsd).times(100).toNumber()
         const deadline = goal.deadline
         const daysRemaining = deadline
           ? differenceInCalendarDays(deadline, new Date())
           : null
 
-        const remaining = target.minus(current)
+        const remainingUsd = targetUsd.minus(currentUsd)
         const monthsRemaining =
           deadline && (daysRemaining ?? 0) > 0
             ? Math.max(1, differenceInCalendarMonths(deadline, new Date()))
             : null
 
         const requiredMonthlySaving =
-          monthsRemaining && remaining.greaterThan(0)
-            ? remaining.div(monthsRemaining).toString()
+          monthsRemaining && remainingUsd.greaterThan(0)
+            ? remainingUsd.div(monthsRemaining).toString()
             : null
+
+        const target = convertToBaseCurrency(
+          targetUsd,
+          "USD",
+          currencySettings
+        )
+        const current = convertToBaseCurrency(
+          currentUsd,
+          "USD",
+          currencySettings
+        )
+        const requiredMonthlySavingBase = requiredMonthlySaving
+          ? convertToBaseCurrency(
+              new Prisma.Decimal(requiredMonthlySaving),
+              "USD",
+              currencySettings
+            ).toString()
+          : null
 
         const visual = selectVisual(goal.name)
 
@@ -90,7 +111,7 @@ export async function getGoalsWithAnalytics(
           deadline: goal.deadline ? goal.deadline.toISOString() : null,
           progressPercent,
           daysRemaining,
-          requiredMonthlySaving,
+          requiredMonthlySaving: requiredMonthlySavingBase,
           financialAccountId: goal.financialAccountId,
           icon: visual.icon,
           color: visual.color,

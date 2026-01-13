@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
@@ -6,6 +7,7 @@ import { createMetadata } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import { BookOpen, Tag } from "lucide-react"
 
 import { CategoryForm } from "./_components/category-form"
@@ -30,7 +32,30 @@ const systemCategories = [
   },
 ]
 
-export default async function CategoriesPage() {
+function CategoriesSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-9 w-36" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+      </div>
+      <Skeleton className="h-20 w-full" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+    </div>
+  )
+}
+
+async function CategoriesContent() {
   const user = await getAuthenticatedUser()
   if (!user) {
     redirect("/sign-in")
@@ -94,5 +119,13 @@ export default async function CategoriesPage() {
         ))}
       </div>
     </div>
+  )
+}
+
+export default function CategoriesPage() {
+  return (
+    <Suspense fallback={<CategoriesSkeleton />}>
+      <CategoriesContent />
+    </Suspense>
   )
 }

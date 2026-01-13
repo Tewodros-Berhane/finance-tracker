@@ -206,7 +206,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           <DropdownMenuContent side="right" align="end" className="w-48">
             <DropdownMenuLabel>Profile</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem><Link href="/settings">Settings</Link></DropdownMenuItem>
             <DropdownMenuItem>
               <Link href="/sign-in" onClick={onsubmit}>Logout</Link>
             </DropdownMenuItem>

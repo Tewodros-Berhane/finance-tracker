@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER"
@@ -24,6 +25,7 @@ type RecentTransaction = {
   amount: number
   type: TransactionType
   icon?: string
+  currency: string
 }
 
 const iconMap = {
@@ -45,15 +47,7 @@ const iconMap = {
 
 type RecentTransactionsProps = {
   data: RecentTransaction[]
-  currency?: string
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value)
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
@@ -61,10 +55,7 @@ const formatDate = (value: string) =>
     day: "numeric",
   }).format(new Date(value))
 
-export function RecentTransactions({
-  data,
-  currency = "USD",
-}: RecentTransactionsProps) {
+export function RecentTransactions({ data }: RecentTransactionsProps) {
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -114,7 +105,11 @@ export function RecentTransactions({
                 )}
               >
                 {isIncome ? "+" : isExpense ? "-" : ""}
-                {formatCurrency(Math.abs(transaction.amount), currency)}
+                {formatCurrency(
+                  Math.abs(transaction.amount),
+                  transaction.currency,
+                  { maximumFractionDigits: 2 }
+                )}
               </div>
             </div>
           )

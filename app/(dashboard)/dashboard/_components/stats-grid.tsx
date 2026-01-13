@@ -3,6 +3,7 @@
 import { TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/format"
 
 type StatsGridProps = {
   totalBalance: number
@@ -10,13 +11,6 @@ type StatsGridProps = {
   monthlyExpenses: number
   currency?: string
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value)
 
 export function StatsGrid({
   totalBalance,
@@ -37,7 +31,9 @@ export function StatsGrid({
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-semibold">
-            {formatCurrency(totalBalance, currency)}
+            {formatCurrency(totalBalance, currency, {
+              maximumFractionDigits: 2,
+            })}
           </p>
           <p className="text-muted-foreground text-xs">
             Across all connected accounts
@@ -55,7 +51,9 @@ export function StatsGrid({
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-semibold">
-            {formatCurrency(monthlyIncome, currency)}
+            {formatCurrency(monthlyIncome, currency, {
+              maximumFractionDigits: 2,
+            })}
           </p>
           <p className="text-muted-foreground text-xs">
             Incoming transactions this month
@@ -73,7 +71,9 @@ export function StatsGrid({
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-semibold">
-            {formatCurrency(monthlyExpenses, currency)}
+            {formatCurrency(monthlyExpenses, currency, {
+              maximumFractionDigits: 2,
+            })}
           </p>
           <p className="text-muted-foreground text-xs">
             Outgoing transactions this month
@@ -83,4 +83,3 @@ export function StatsGrid({
     </div>
   )
 }
-

@@ -5,7 +5,10 @@ import { revalidateTag } from "next/cache"
 import { z } from "zod"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
+import { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "../prisma"
+import { convertFromBaseCurrency } from "../services/currency.service"
+import { getUserCurrencySettings } from "../services/user.service"
 import { upsertBudgetSchema } from "./budget.schema"
 
 const deleteBudgetSchema = z.object({
@@ -48,6 +51,13 @@ export async function upsertBudget(
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+  const currencySettings = await getUserCurrencySettings(user.id)
+  const inputAmount = new Prisma.Decimal(data.amount)
+  const normalizedAmount = convertFromBaseCurrency(
+    inputAmount,
+    "USD",
+    currencySettings
+  )
 
   const existing = await prisma.budget.findFirst({
     where: {
@@ -65,7 +75,7 @@ export async function upsertBudget(
   const saved = await prisma.budget.upsert({
     where: { id: targetId },
     update: {
-      amount: data.amount,
+      amount: normalizedAmount.toString(),
       month,
       year,
     },
@@ -73,7 +83,7 @@ export async function upsertBudget(
       id: targetId,
       userId: user.id,
       categoryId: data.categoryId,
-      amount: data.amount,
+      amount: normalizedAmount.toString(),
       month,
       year,
     },

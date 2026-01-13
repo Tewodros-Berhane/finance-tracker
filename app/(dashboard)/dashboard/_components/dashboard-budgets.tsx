@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const iconMap = {
@@ -37,13 +38,6 @@ type DashboardBudgetsProps = {
   data: BudgetItem[]
   currency?: string
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value)
 
 export function DashboardBudgets({
   data,
@@ -84,8 +78,13 @@ export function DashboardBudgets({
                   <span>{budget.category}</span>
                 </div>
                 <span className="text-muted-foreground text-xs">
-                  {formatCurrency(budget.spent, currency)} /{" "}
-                  {formatCurrency(budget.limit, currency)}
+                  {formatCurrency(budget.spent, currency, {
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  /{" "}
+                  {formatCurrency(budget.limit, currency, {
+                    maximumFractionDigits: 0,
+                  })}
                 </span>
               </div>
               <Progress

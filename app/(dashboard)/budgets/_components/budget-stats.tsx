@@ -1,19 +1,13 @@
 import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/format"
 
 type BudgetStatsProps = {
   totalBudgeted: string
   totalSpent: string
   currency?: string
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value)
 
 export function BudgetStats({
   totalBudgeted,
@@ -32,7 +26,9 @@ export function BudgetStats({
             Total Budgeted
           </p>
           <p className="text-2xl font-semibold">
-            {formatCurrency(budgetedValue, currency)}
+            {formatCurrency(budgetedValue, currency, {
+              maximumFractionDigits: 2,
+            })}
           </p>
         </div>
         <div className="space-y-1">
@@ -44,7 +40,9 @@ export function BudgetStats({
               <ArrowDownRight className="h-4 w-4 text-emerald-500" />
             )}
             <p className="text-2xl font-semibold">
-              {formatCurrency(spentValue, currency)}
+              {formatCurrency(spentValue, currency, {
+                maximumFractionDigits: 2,
+              })}
             </p>
           </div>
         </div>
