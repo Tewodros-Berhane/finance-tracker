@@ -1,34 +1,34 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useTransition } from "react"
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import {
   CreditCard,
   Landmark,
   MoreHorizontal,
   PiggyBank,
   Wallet,
-} from "lucide-react"
-import { toast } from "sonner"
-import type { AccountType } from "@/lib/generated/prisma/client"
-import { deleteAccount } from "@/lib/actions/account.actions"
-import { formatCurrency } from "@/lib/format"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "lucide-react";
+import { toast } from "sonner";
+import type { AccountType } from "../../../prisma/@/lib/generated/prisma/client";
+import { deleteAccount } from "@/lib/actions/account.actions";
+import { formatCurrency } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 const typeLabels: Record<AccountType, string> = {
   CHECKING: "Checking",
@@ -36,7 +36,7 @@ const typeLabels: Record<AccountType, string> = {
   CREDIT: "Credit",
   CASH: "Cash",
   INVESTMENT: "Investment",
-}
+};
 
 const typeIcons: Record<AccountType, typeof Wallet> = {
   CHECKING: Landmark,
@@ -44,43 +44,43 @@ const typeIcons: Record<AccountType, typeof Wallet> = {
   CREDIT: CreditCard,
   CASH: Wallet,
   INVESTMENT: Landmark,
-}
+};
 
 type AccountCardProps = {
   account: {
-    id: string
-    name: string
-    type: AccountType
-    currency: string
-    color: string
-    icon: string
-    currentBalance: string
-  }
-}
+    id: string;
+    name: string;
+    type: AccountType;
+    currency: string;
+    color: string;
+    icon: string;
+    currentBalance: string;
+  };
+};
 
 export function AccountCard({ account }: AccountCardProps) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const Icon = typeIcons[account.type] ?? Wallet
-  const balanceValue = Number(account.currentBalance)
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const Icon = typeIcons[account.type] ?? Wallet;
+  const balanceValue = Number(account.currentBalance);
   const balanceColor =
     account.type === "CREDIT" && balanceValue > 0
       ? "text-destructive"
-      : "text-foreground"
+      : "text-foreground";
 
   const handleDelete = () => {
     startTransition(async () => {
-      const response = await deleteAccount({ id: account.id })
+      const response = await deleteAccount({ id: account.id });
 
       if (!response.success) {
-        toast.error(response.error ?? "Failed to delete account.")
-        return
+        toast.error(response.error ?? "Failed to delete account.");
+        return;
       }
 
-      toast.success("Account deleted.")
-      router.refresh()
-    })
-  }
+      toast.success("Account deleted.");
+      router.refresh();
+    });
+  };
 
   return (
     <Card className="flex h-full flex-col">
@@ -133,5 +133,5 @@ export function AccountCard({ account }: AccountCardProps) {
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }
