@@ -75,6 +75,17 @@ const buildCashFlow = (
   }))
 }
 
+type CashFlowTransaction = {
+  date: Date
+  amount: Prisma.Decimal
+  type: "INCOME" | "EXPENSE" | "TRANSFER"
+}
+
+const isCashFlowTransaction = (
+  transaction: CashFlowTransaction
+): transaction is CashFlowTransaction & { type: "INCOME" | "EXPENSE" } =>
+  transaction.type === "INCOME" || transaction.type === "EXPENSE"
+
 const sumGroupsToBase = (
   groups: {
     financialAccountId: string
@@ -322,7 +333,7 @@ export async function getDashboardSummary(
         monthlyIncome: rangeIncome.toString(),
         monthlyExpenses: rangeExpense.toString(),
         categoryBreakdown,
-        cashFlow: buildCashFlow(cashFlow),
+        cashFlow: buildCashFlow(cashFlow.filter(isCashFlowTransaction)),
       }
     },
     cacheKey,
