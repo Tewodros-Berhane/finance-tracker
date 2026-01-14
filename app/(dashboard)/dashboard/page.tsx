@@ -120,7 +120,7 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
     getUserCurrencySettings(userId),
   ])
 
-  const recentTransactions = recent.map((transaction: { id: any; category: { name: any; icon: any }; description: any; financialAccount: { name: any; currency: any }; date: any; amount: any; type: any }) => ({
+  const recentTransactions = recent.map((transaction) => ({
     id: transaction.id,
     category: transaction.category?.name ?? "Uncategorized",
     description: transaction.description ?? "Untitled transaction",
@@ -132,7 +132,7 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
     currency: transaction.financialAccount.currency ?? currencySettings.baseCurrency,
   }))
 
-  const budgetAlerts = budgets.map((budget: { id: any; categoryName: any; spent: any; limit: any; categoryIcon: string | null | undefined }) => ({
+  const budgetAlerts = budgets.map((budget) => ({
     id: budget.id,
     category: budget.categoryName,
     spent: Number(budget.spent),
@@ -140,7 +140,7 @@ async function DashboardContent({ searchParams }: DashboardPageProps) {
     icon: mapBudgetIcon(budget.categoryIcon),
   }))
 
-  const categoryData = summary.categoryBreakdown.map((item: { name: any; total: any }) => ({
+  const categoryData = summary.categoryBreakdown.map((item) => ({
     category: item.name,
     value: Number(item.total),
   }))
