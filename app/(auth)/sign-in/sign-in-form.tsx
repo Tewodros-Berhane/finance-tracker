@@ -39,8 +39,8 @@ export function SignInForm() {
         password: data.password,
         fetchOptions: {
           onSuccess: () => {
-            toast.success("Logged in successfully");
             router.push("/dashboard");
+            toast.success("Logged in successfully");
           },
           onError: (error) => {
             toast.error(error.error.message);

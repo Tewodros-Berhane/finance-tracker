@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Trash2, X } from "lucide-react"
 import type { Table } from "@tanstack/react-table"
 import { toast } from "sonner"
@@ -21,8 +22,17 @@ export function DataTableToolbar<TData>({
   categories,
   types,
 }: DataTableToolbarProps<TData>) {
+  const descriptionColumn = table.getColumn("description")
+  const descriptionFilter =
+    (descriptionColumn?.getFilterValue() as string) ?? ""
+  const [searchValue, setSearchValue] = React.useState(descriptionFilter)
+
+  React.useEffect(() => {
+    setSearchValue(descriptionFilter)
+  }, [descriptionFilter])
+
   const isFiltered = [
-    table.getColumn("description")?.getFilterValue(),
+    descriptionFilter,
     table.getColumn("accountName")?.getFilterValue(),
     table.getColumn("categoryName")?.getFilterValue(),
     table.getColumn("type")?.getFilterValue(),
@@ -51,10 +61,12 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-1 flex-wrap items-center gap-2">
         <Input
           placeholder="Search description..."
-          value={(table.getColumn("description")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("description")?.setFilterValue(event.target.value)
-          }
+          value={searchValue}
+          onChange={(event) => {
+            const nextValue = event.target.value
+            setSearchValue(nextValue)
+            descriptionColumn?.setFilterValue(nextValue)
+          }}
           className="h-9 w-full sm:max-w-xs"
         />
         {table.getColumn("accountName") && (
