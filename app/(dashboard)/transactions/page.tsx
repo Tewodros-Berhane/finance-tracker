@@ -245,6 +245,9 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
         data={tableData}
         accounts={accountOptions}
         categories={categoryOptions}
+        page={transactionsResult.meta.page}
+        pageSize={transactionsResult.meta.limit}
+        total={transactionsResult.meta.total}
       />
     </div>
   )

@@ -30,6 +30,14 @@ type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   toolbar: Omit<React.ComponentProps<typeof DataTableToolbar>, "table">
+  pagination?: {
+    pageIndex: number
+    pageSize: number
+    pageCount: number
+    total: number
+    onPageChange: (pageIndex: number) => void
+    onPageSizeChange: (pageSize: number) => void
+  }
 }
 
 type ColumnMeta = {
@@ -40,6 +48,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   toolbar,
+  pagination,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -47,24 +56,53 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
 
+  const paginationState = React.useMemo(
+    () =>
+      pagination
+        ? {
+            pageIndex: pagination.pageIndex,
+            pageSize: pagination.pageSize,
+          }
+        : undefined,
+    [pagination]
+  )
+
   const table = useReactTable({
     data,
     columns,
     enableRowSelection: true,
+    manualPagination: Boolean(pagination),
+    pageCount: pagination?.pageCount,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      ...(paginationState ? { pagination: paginationState } : {}),
     },
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: (updater) => {
+      if (!pagination || !paginationState) return
+      const next =
+        typeof updater === "function" ? updater(paginationState) : updater
+
+      if (next.pageIndex !== pagination.pageIndex) {
+        pagination.onPageChange(next.pageIndex)
+      }
+
+      if (next.pageSize !== pagination.pageSize) {
+        pagination.onPageSizeChange(next.pageSize)
+      }
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getRowId: (row, index) =>
+      (row as { id?: string }).id ?? String(index),
   })
 
   return (
@@ -140,4 +178,3 @@ export function DataTable<TData, TValue>({
     </div>
   )
 }
-

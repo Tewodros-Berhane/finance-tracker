@@ -24,11 +24,14 @@ type DataTablePaginationProps<TData> = {
 export function DataTablePagination<TData>({
   table,
 }: DataTablePaginationProps<TData>) {
+  const pageRows = table.getRowModel().rows
+  const selectedCount = pageRows.filter((row) => row.getIsSelected()).length
+  const totalRows = pageRows.length
+
   return (
     <div className="flex flex-col gap-4 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-muted-foreground text-sm">
-        {table.getFilteredSelectedRowModel().rows.length} of{" "}
-        {table.getFilteredRowModel().rows.length} selected
+        {selectedCount} of {totalRows} selected
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2">
@@ -95,4 +98,3 @@ export function DataTablePagination<TData>({
     </div>
   )
 }
-
