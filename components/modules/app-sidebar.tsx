@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeftRight,
   Landmark,
@@ -11,7 +11,7 @@ import {
   Target,
   Wallet,
 } from "lucide-react";
-
+import { useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client"
+import { authClient } from "@/lib/auth-client";
 
 const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -53,24 +53,24 @@ const systemNav = [{ title: "Categories", href: "/categories", icon: Layers }];
 
 type AppSidebarProps = {
   user?: {
-    name?: string | null
-    email?: string | null
-    image?: string | null
-  }
-}
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+};
 
 const getInitials = (name?: string | null) => {
-  if (!name) return "VT"
-  const parts = name.trim().split(" ").filter(Boolean)
-  if (parts.length === 0) return "VT"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-}
+  if (!name) return "VT";
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) return "VT";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
 
 export function AppSidebar({ user }: AppSidebarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { isMobile, setOpenMobile } = useSidebar()
+  const pathname = usePathname();
+  const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -80,21 +80,35 @@ export function AppSidebar({ user }: AppSidebarProps) {
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
-  const handleNavClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
+  // const handleNavClick = () => {
+  //   if (isMobile) {
+  //     setOpenMobile(false);
+  //   }
+  // };
+
+  // const handleSettingsClick = () => {
+  //   if (isMobile) {
+  //     setOpenMobile(false);
+  //   }
+  //   router.push("/settings");
+  //   if (isMobile) {
+  //     setOpenMobile(false);
+  //   }
+  // };
 
   async function onsubmit() {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          router.push("/sign-in")
+          router.push("/sign-in");
         },
       },
-    })
+    });
   }
+
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   return (
     <Sidebar variant="inset">
@@ -102,7 +116,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg" className="gap-3">
-              <Link href="/dashboard" onClick={handleNavClick}>
+              <Link href="/dashboard">
                 <span className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-lg">
                   <Wallet className="size-5" />
                 </span>
@@ -129,7 +143,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     isActive={isActive(item.href)}
                     tooltip={item.title}
                   >
-                    <Link href={item.href} onClick={handleNavClick}>
+                    <Link href={item.href}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -150,7 +164,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     isActive={isActive(item.href)}
                     tooltip={item.title}
                   >
-                    <Link href={item.href} onClick={handleNavClick}>
+                    <Link href={item.href}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -171,7 +185,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     isActive={isActive(item.href)}
                     tooltip={item.title}
                   >
-                    <Link href={item.href} onClick={handleNavClick}>
+                    <Link href={item.href}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -183,14 +197,17 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-auto w-full justify-start gap-3 px-2 py-2"
             >
               <Avatar className="size-9">
-                <AvatarImage src={user?.image ?? ""} alt={user?.name ?? "User"} />
+                <AvatarImage
+                  src={user?.image ?? ""}
+                  alt={user?.name ?? "User"}
+                />
                 <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
               </Avatar>
               <span className="flex min-w-0 flex-col leading-none">
@@ -203,12 +220,29 @@ export function AppSidebar({ user }: AppSidebarProps) {
               </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end" className="w-48">
+          <DropdownMenuContent
+            side="right"
+            align="end"
+            sideOffset={8}
+            className="w-48"
+          >
             <DropdownMenuLabel>Profile</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem><Link href="/settings">Settings</Link></DropdownMenuItem>
-            <DropdownMenuItem>
-              <Link href="/sign-in" onClick={onsubmit}>Logout</Link>
+            <DropdownMenuItem
+              onSelect={() => {
+                setOpenMobile(false);
+                router.push("/settings");
+              }}
+            >
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                setOpenMobile(false);
+                onsubmit();
+              }}
+            >
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
