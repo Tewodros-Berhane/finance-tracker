@@ -76,14 +76,14 @@ export async function createTransaction(
           id: data.financialAccountId,
           userId: user.id,
         },
-        select: { id: true, name: true, balance: true },
+        select: { id: true, name: true, balance: true, currency: true },
       }),
       prisma.financialAccount.findFirst({
         where: {
           id: data.transferAccountId,
           userId: user.id,
         },
-        select: { id: true, name: true, balance: true },
+        select: { id: true, name: true, balance: true, currency: true },
       }),
     ]);
 
@@ -96,6 +96,58 @@ export async function createTransaction(
     }
 
     const amount = new Prisma.Decimal(data.amount);
+    const normalizeCurrency = (currency?: string | null) =>
+      currency === "BIRR" ? "ETB" : currency ?? "USD";
+    const fromCurrency = normalizeCurrency(fromAccount.currency);
+    const toCurrency = normalizeCurrency(toAccount.currency);
+    let convertedAmount = amount;
+
+    if (fromCurrency !== toCurrency) {
+      const isUsdEtbPair =
+        (fromCurrency === "USD" && toCurrency === "ETB") ||
+        (fromCurrency === "ETB" && toCurrency === "USD");
+
+      if (!isUsdEtbPair) {
+        return {
+          success: false,
+          data: null,
+          error: "Cross-currency transfers are only supported between USD and ETB.",
+        };
+      }
+
+      const exchangeRate = data.exchangeRate?.trim();
+      if (!exchangeRate) {
+        return {
+          success: false,
+          data: null,
+          error: "Exchange rate is required for cross-currency transfers.",
+        };
+      }
+
+      let rate: Prisma.Decimal;
+      try {
+        rate = new Prisma.Decimal(exchangeRate);
+      } catch {
+        return {
+          success: false,
+          data: null,
+          error: "Exchange rate must be a valid number.",
+        };
+      }
+
+      if (rate.lte(0)) {
+        return {
+          success: false,
+          data: null,
+          error: "Exchange rate must be greater than zero.",
+        };
+      }
+
+      convertedAmount =
+        fromCurrency === "USD" && toCurrency === "ETB"
+          ? amount.mul(rate)
+          : amount.div(rate);
+    }
     const description = data.description?.trim();
     let created: { id: string };
 
@@ -118,7 +170,9 @@ export async function createTransaction(
         const fromBalance = new Prisma.Decimal(fromAccount.balance).minus(
           amount
         );
-        const toBalance = new Prisma.Decimal(toAccount.balance).plus(amount);
+        const toBalance = new Prisma.Decimal(toAccount.balance).plus(
+          convertedAmount
+        );
 
         const [fromUpdated, toUpdated] = await Promise.all([
           updateAccountBalance(user.id, fromAccount.id, fromBalance, tx),

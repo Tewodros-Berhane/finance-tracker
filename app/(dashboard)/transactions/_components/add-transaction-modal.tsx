@@ -69,7 +69,8 @@ type AddTransactionModalProps = {
 
 const currencySymbols: Record<string, string> = {
   USD: "$",
-  BIRR: "Br",
+  BIRR: "ETB",
+  ETB: "ETB",
 }
 
 const transactionTypes = [
@@ -136,6 +137,7 @@ export function AddTransactionModal({
       date: new Date(),
       financialAccountId: accounts[0]?.id ?? "",
       transferAccountId: "",
+      exchangeRate: "",
       categoryId: undefined,
       description: "",
       isRecurring: false,
@@ -145,11 +147,21 @@ export function AddTransactionModal({
   const selectedType = form.watch("type")
   const selectedAccountId = form.watch("financialAccountId")
   const selectedTransferAccountId = form.watch("transferAccountId")
+  const exchangeRateValue = form.watch("exchangeRate")
   const selectedAccount = accounts.find(
     (account) => account.id === selectedAccountId
   )
+  const selectedTransferAccount = accounts.find(
+    (account) => account.id === selectedTransferAccountId
+  )
   const currencySymbol =
     currencySymbols[selectedAccount?.currency || "USD"] || "$"
+  const fromCurrency = selectedAccount?.currency ?? "USD"
+  const toCurrency = selectedTransferAccount?.currency ?? "USD"
+  const isCrossCurrencyTransfer =
+    selectedType === "TRANSFER" &&
+    Boolean(selectedTransferAccountId) &&
+    fromCurrency !== toCurrency
   const availableTransferAccounts = useMemo(
     () => accounts.filter((account) => account.id !== selectedAccountId),
     [accounts, selectedAccountId]
@@ -293,6 +305,16 @@ export function AddTransactionModal({
   }, [form, selectedType])
 
   useEffect(() => {
+    if (
+      selectedType !== "TRANSFER" ||
+      !selectedTransferAccountId ||
+      fromCurrency === toCurrency
+    ) {
+      form.setValue("exchangeRate", "")
+    }
+  }, [form, fromCurrency, selectedTransferAccountId, selectedType, toCurrency])
+
+  useEffect(() => {
     if (state.error) {
       toast.error(state.error)
     }
@@ -311,6 +333,9 @@ export function AddTransactionModal({
     formAction({
       ...values,
       amount: values.amount.trim(),
+      exchangeRate: isCrossCurrencyTransfer
+        ? values.exchangeRate?.trim()
+        : undefined,
       categoryId: selectedType === "EXPENSE" ? values.categoryId || undefined : undefined,
       transferAccountId:
         selectedType === "TRANSFER" ? values.transferAccountId || undefined : undefined,
@@ -323,7 +348,8 @@ export function AddTransactionModal({
     (selectedType === "TRANSFER" &&
       (!selectedTransferAccountId ||
         selectedTransferAccountId === selectedAccountId ||
-        availableTransferAccounts.length === 0))
+        availableTransferAccounts.length === 0 ||
+        (isCrossCurrencyTransfer && !exchangeRateValue)))
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -396,16 +422,16 @@ export function AddTransactionModal({
                           value={field.value}
                           onValueChange={field.onChange}
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select account" />
+                          <SelectTrigger className="w-full min-w-0">
+                            <SelectValue className="truncate" placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
                             {accounts.length ? (
                               accounts.map((account) => (
                                 <SelectItem key={account.id} value={account.id}>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex min-w-0 items-center gap-2">
                                     <Wallet className="size-4" />
-                                    <span>{account.name}</span>
+                                    <span className="truncate">{account.name}</span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -436,16 +462,16 @@ export function AddTransactionModal({
                           value={field.value ?? ""}
                           onValueChange={field.onChange}
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select account" />
+                          <SelectTrigger className="w-full min-w-0">
+                            <SelectValue className="truncate" placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
                             {availableTransferAccounts.length ? (
                               availableTransferAccounts.map((account) => (
                                 <SelectItem key={account.id} value={account.id}>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex min-w-0 items-center gap-2">
                                     <Wallet className="size-4" />
-                                    <span>{account.name}</span>
+                                    <span className="truncate">{account.name}</span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -479,16 +505,16 @@ export function AddTransactionModal({
                           value={field.value}
                           onValueChange={field.onChange}
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select account" />
+                          <SelectTrigger className="w-full min-w-0">
+                            <SelectValue className="truncate" placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
                             {accounts.length ? (
                               accounts.map((account) => (
                                 <SelectItem key={account.id} value={account.id}>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex min-w-0 items-center gap-2">
                                     <Wallet className="size-4" />
-                                    <span>{account.name}</span>
+                                    <span className="truncate">{account.name}</span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -521,8 +547,9 @@ export function AddTransactionModal({
                           onValueChange={field.onChange}
                           disabled={selectedType !== "EXPENSE"}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full min-w-0">
                             <SelectValue
+                              className="truncate"
                               placeholder={
                                 selectedType !== "EXPENSE"
                                   ? "Not applicable"
@@ -534,9 +561,9 @@ export function AddTransactionModal({
                             {filteredCategories.length ? (
                               filteredCategories.map((category) => (
                                 <SelectItem key={category.id} value={category.id}>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex min-w-0 items-center gap-2">
                                     <Tag className="size-4" />
-                                    <span>{category.name}</span>
+                                    <span className="truncate">{category.name}</span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -557,6 +584,33 @@ export function AddTransactionModal({
                   )}
                 />
               </div>
+            )}
+
+            {selectedType === "TRANSFER" && (
+              <FormField
+                control={form.control}
+                name="exchangeRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Exchange rate (1 USD = ? ETB)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.0001"
+                        placeholder={
+                          isCrossCurrencyTransfer
+                            ? "1 USD = ? ETB"
+                            : "Not applicable"
+                        }
+                        disabled={!isCrossCurrencyTransfer}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             <FormField

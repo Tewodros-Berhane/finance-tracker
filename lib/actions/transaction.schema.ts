@@ -11,6 +11,15 @@ export const createTransactionSchema = z.object({
     .refine((value) => Number(value) > 0 && !Number.isNaN(Number(value)), {
       message: "Amount must be a positive number",
     }),
+  exchangeRate: z
+    .string()
+    .optional()
+    .refine(
+      (value) =>
+        value === undefined ||
+        (Number(value) > 0 && !Number.isNaN(Number(value))),
+      { message: "Exchange rate must be a positive number" }
+    ),
   date: z.coerce.date(),
   description: z.string().optional(),
   isRecurring: z.boolean().default(false),
@@ -51,6 +60,14 @@ export const createTransactionSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["categoryId"],
         message: "Only expenses can have a category.",
+      })
+    }
+
+    if (value.exchangeRate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["exchangeRate"],
+        message: "Exchange rate is only for transfers.",
       })
     }
   }
