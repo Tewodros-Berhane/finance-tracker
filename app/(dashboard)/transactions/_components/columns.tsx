@@ -108,7 +108,7 @@ export const columns: ColumnDef<TransactionRow>[] = [
     header: "Description",
     filterFn: "includesString",
     cell: ({ row }) => (
-      <div className="min-w-0 max-w-[220px]">
+      <div className="min-w-0 max-w-55">
         <p className="text-sm font-medium truncate">
           {row.getValue("description")}
         </p>
