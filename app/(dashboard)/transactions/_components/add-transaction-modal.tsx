@@ -364,7 +364,10 @@ export function AddTransactionModal({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="grid gap-4"
+          >
             <Tabs
               value={selectedType}
               onValueChange={(value) =>
@@ -423,7 +426,10 @@ export function AddTransactionModal({
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-full min-w-0">
-                            <SelectValue className="truncate" placeholder="Select account" />
+                            <SelectValue
+                              className="truncate"
+                              placeholder="Select account"
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {accounts.length ? (
@@ -431,7 +437,9 @@ export function AddTransactionModal({
                                 <SelectItem key={account.id} value={account.id}>
                                   <div className="flex min-w-0 items-center gap-2">
                                     <Wallet className="size-4" />
-                                    <span className="truncate">{account.name}</span>
+                                    <span className="truncate">
+                                      {account.name}
+                                    </span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -463,7 +471,10 @@ export function AddTransactionModal({
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-full min-w-0">
-                            <SelectValue className="truncate" placeholder="Select account" />
+                            <SelectValue
+                              className="truncate"
+                              placeholder="Select account"
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {availableTransferAccounts.length ? (
@@ -471,7 +482,9 @@ export function AddTransactionModal({
                                 <SelectItem key={account.id} value={account.id}>
                                   <div className="flex min-w-0 items-center gap-2">
                                     <Wallet className="size-4" />
-                                    <span className="truncate">{account.name}</span>
+                                    <span className="truncate">
+                                      {account.name}
+                                    </span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -506,7 +519,10 @@ export function AddTransactionModal({
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-full min-w-0">
-                            <SelectValue className="truncate" placeholder="Select account" />
+                            <SelectValue
+                              className="truncate"
+                              placeholder="Select account"
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {accounts.length ? (
@@ -514,7 +530,9 @@ export function AddTransactionModal({
                                 <SelectItem key={account.id} value={account.id}>
                                   <div className="flex min-w-0 items-center gap-2">
                                     <Wallet className="size-4" />
-                                    <span className="truncate">{account.name}</span>
+                                    <span className="truncate">
+                                      {account.name}
+                                    </span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -560,10 +578,15 @@ export function AddTransactionModal({
                           <SelectContent>
                             {filteredCategories.length ? (
                               filteredCategories.map((category) => (
-                                <SelectItem key={category.id} value={category.id}>
+                                <SelectItem
+                                  key={category.id}
+                                  value={category.id}
+                                >
                                   <div className="flex min-w-0 items-center gap-2">
                                     <Tag className="size-4" />
-                                    <span className="truncate">{category.name}</span>
+                                    <span className="truncate">
+                                      {category.name}
+                                    </span>
                                   </div>
                                 </SelectItem>
                               ))
@@ -585,66 +608,68 @@ export function AddTransactionModal({
                 />
               </div>
             )}
+            <div className="grid align-center gap-4 md:grid md:grid-cols-2">
+              {selectedType === "TRANSFER" && (
+                <FormField
+                  control={form.control}
+                  name="exchangeRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Exchange rate (1 USD = ? ETB)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.0001"
+                          placeholder={
+                            isCrossCurrencyTransfer
+                              ? "1 USD = ? ETB"
+                              : "Not applicable"
+                          }
+                          disabled={!isCrossCurrencyTransfer}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-            {selectedType === "TRANSFER" && (
               <FormField
                 control={form.control}
-                name="exchangeRate"
+                name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Exchange rate (1 USD = ? ETB)</FormLabel>
+                    <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.0001"
-                        placeholder={
-                          isCrossCurrencyTransfer
-                            ? "1 USD = ? ETB"
-                            : "Not applicable"
-                        }
-                        disabled={!isCrossCurrencyTransfer}
-                        {...field}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2"
+                          >
+                            <CalendarIcon className="size-4" />
+                            {field.value
+                              ? format(field.value, "PPP")
+                              : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={(date) => date && field.onChange(date)}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
-
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date</FormLabel>
-                  <FormControl>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-2"
-                        >
-                          <CalendarIcon className="size-4" />
-                          {field.value ? format(field.value, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={(date) => date && field.onChange(date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            </div>
             <FormField
               control={form.control}
               name="description"
@@ -684,9 +709,7 @@ export function AddTransactionModal({
 
             <DialogFooter>
               <Button type="submit" disabled={isSubmitDisabled}>
-                {isPending && (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                )}
+                {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Add transaction
               </Button>
             </DialogFooter>
@@ -694,5 +717,5 @@ export function AddTransactionModal({
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
