@@ -19,14 +19,87 @@ import {
 
 type DataTablePaginationProps<TData> = {
   table: Table<TData>
+  pagination?: {
+    mode: "cursor"
+    pageSize: number
+    rowCount: number
+    hasNext: boolean
+    hasPrev: boolean
+    onNext: () => void
+    onPrev: () => void
+    onPageSizeChange: (pageSize: number) => void
+  } | {
+    mode?: "offset"
+    pageIndex: number
+    pageSize: number
+    pageCount: number
+    total: number
+    onPageChange: (pageIndex: number) => void
+    onPageSizeChange: (pageSize: number) => void
+  }
 }
 
 export function DataTablePagination<TData>({
   table,
+  pagination,
 }: DataTablePaginationProps<TData>) {
   const pageRows = table.getRowModel().rows
-  const selectedCount = pageRows.filter((row) => row.getIsSelected()).length
-  const totalRows = pageRows.length
+  const selectedCount = table.getSelectedRowModel().rows.length
+  const totalRows =
+    pagination?.mode === "cursor" ? pagination.rowCount : pageRows.length
+
+  if (pagination?.mode === "cursor") {
+    return (
+      <div className="flex flex-col gap-4 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-muted-foreground text-sm">
+          {selectedCount} of {totalRows} selected
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${pagination.pageSize}`}
+              onValueChange={(value) => pagination.onPageSizeChange(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-17.5">
+                <SelectValue placeholder={pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-sm font-medium">
+            Showing {totalRows} transactions
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={pagination.onPrev}
+              disabled={!pagination.hasPrev}
+            >
+              <ChevronLeft className="size-4" />
+              <span className="sr-only">Go to previous page</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={pagination.onNext}
+              disabled={!pagination.hasNext}
+            >
+              <ChevronRight className="size-4" />
+              <span className="sr-only">Go to next page</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">

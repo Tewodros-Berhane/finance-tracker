@@ -11,8 +11,9 @@ export type TransactionFilters = {
   to?: Date;
   accountId?: string;
   categoryId?: string;
-  page?: number;
   limit?: number;
+  cursor?: string;
+  direction?: "next" | "prev";
 };
 
 type TransactionRow = {
@@ -37,9 +38,11 @@ type TransactionRow = {
 type TransactionResult = {
   data: TransactionRow[];
   meta: {
-    total: number;
-    page: number;
     limit: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    nextCursor: string | null;
+    prevCursor: string | null;
   };
 };
 
@@ -98,9 +101,10 @@ export async function getTransactions(
   userId: string,
   filters: TransactionFilters = {}
 ): Promise<TransactionResult> {
-  const page = filters.page && filters.page > 0 ? filters.page : 1;
   const limit =
     filters.limit && filters.limit > 0 ? filters.limit : DEFAULT_LIMIT;
+  const cursor = filters.cursor ?? undefined;
+  const direction = filters.direction ?? "next";
 
   const cacheKey = [
     "transactions",
@@ -110,49 +114,68 @@ export async function getTransactions(
       to: filters.to?.toISOString(),
       accountId: filters.accountId ?? "",
       categoryId: filters.categoryId ?? "",
-      page,
       limit,
+      cursor: cursor ?? "",
+      direction,
     }),
   ];
 
   const cached = unstable_cache(
     async () => {
       const where = buildWhereClause(userId, filters);
+      const isPrev = direction === "prev" && Boolean(cursor);
+      const orderBy = isPrev
+        ? [
+            { date: "asc" as const },
+            { id: "asc" as const },
+          ]
+        : [
+            { date: "desc" as const },
+            { id: "desc" as const },
+          ];
 
-      const [rows, total] = await Promise.all([
-        prisma.transaction.findMany({
-          where,
-          orderBy: { date: "desc" },
-          skip: (page - 1) * limit,
-          take: limit,
-          select: {
-            id: true,
-            date: true,
-            description: true,
-            amount: true,
-            type: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                color: true,
-                icon: true,
-              },
-            },
-            financialAccount: {
-              select: {
-                id: true,
-                name: true,
-                currency: true,
-              },
+      const rows = await prisma.transaction.findMany({
+        where,
+        orderBy,
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
+        cursor: cursor ? { id: cursor } : undefined,
+        select: {
+          id: true,
+          date: true,
+          description: true,
+          amount: true,
+          type: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              icon: true,
             },
           },
-        }),
-        prisma.transaction.count({ where }),
-      ]);
+          financialAccount: {
+            select: {
+              id: true,
+              name: true,
+              currency: true,
+            },
+          },
+        },
+      });
+
+      const hasExtra = rows.length > limit;
+      const sliced = hasExtra ? rows.slice(0, limit) : rows;
+      const orderedRows = isPrev ? [...sliced].reverse() : sliced;
+
+      const hasPrev = isPrev ? hasExtra : Boolean(cursor);
+      const hasNext = isPrev ? Boolean(cursor) : hasExtra;
+      const prevCursor = hasPrev ? orderedRows[0]?.id ?? null : null;
+      const nextCursor =
+        hasNext ? orderedRows[orderedRows.length - 1]?.id ?? null : null;
 
       return {
-        data: rows.map((row) => ({
+        data: orderedRows.map((row) => ({
           id: row.id,
           date: row.date.toISOString(),
           description: row.description,
@@ -173,9 +196,11 @@ export async function getTransactions(
           },
         })),
         meta: {
-          total,
-          page,
           limit,
+          hasNext,
+          hasPrev,
+          nextCursor,
+          prevCursor,
         },
       };
     },

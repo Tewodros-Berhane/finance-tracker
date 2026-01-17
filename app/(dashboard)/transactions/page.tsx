@@ -65,8 +65,13 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
 
   const userId = user.id
 
-  const page = Number(getParam(resolvedSearchParams?.page)) || 1
   const limit = Number(getParam(resolvedSearchParams?.limit)) || undefined
+  const cursor = getParam(resolvedSearchParams?.cursor) ?? undefined
+  const directionParam = getParam(resolvedSearchParams?.direction)
+  const direction =
+    directionParam === "prev" || directionParam === "next"
+      ? directionParam
+      : undefined
   const categoryId =
     getParam(resolvedSearchParams?.categoryId) ??
     getParam(resolvedSearchParams?.category)
@@ -82,8 +87,9 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
 
   const [transactionsResult, accounts, categories] = await Promise.all([
     getTransactions(userId, {
-      page,
       limit,
+      cursor,
+      direction,
       accountId: accountId ?? undefined,
       categoryId: categoryId ?? undefined,
       from,
@@ -245,9 +251,11 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
         data={tableData}
         accounts={accountOptions}
         categories={categoryOptions}
-        page={transactionsResult.meta.page}
         pageSize={transactionsResult.meta.limit}
-        total={transactionsResult.meta.total}
+        hasNext={transactionsResult.meta.hasNext}
+        hasPrev={transactionsResult.meta.hasPrev}
+        nextCursor={transactionsResult.meta.nextCursor}
+        prevCursor={transactionsResult.meta.prevCursor}
       />
     </div>
   )

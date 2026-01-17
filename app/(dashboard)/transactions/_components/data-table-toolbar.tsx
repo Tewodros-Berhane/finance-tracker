@@ -42,9 +42,7 @@ export function DataTableToolbar<TData>({
     }
     return value !== undefined && value !== null && String(value).length > 0
   })
-  const selectedRows = table.getRowModel().rows.filter((row) =>
-    row.getIsSelected()
-  )
+  const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
 
   const handleBulkDelete = () => {
