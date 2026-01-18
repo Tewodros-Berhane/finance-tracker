@@ -43,11 +43,8 @@ export function DataTablePagination<TData>({
   table,
   pagination,
 }: DataTablePaginationProps<TData>) {
-  const selectedCount = table.getSelectedRowModel().rows.length
-  const totalRows =
-    pagination?.mode === "cursor"
-      ? pagination.rowCount
-      : table.getFilteredRowModel().rows.length
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length
+  const totalRows = table.getFilteredRowModel().rows.length
 
   if (pagination?.mode === "cursor") {
     return (

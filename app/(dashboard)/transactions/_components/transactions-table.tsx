@@ -8,16 +8,16 @@ import { toast } from "sonner"
 import { DataTable } from "./data-table"
 import { columns, type TransactionRow } from "./columns"
 import { AddTransactionModal } from "./add-transaction-modal"
+import { Button } from "@/components/ui/button"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { deleteTransaction } from "@/lib/actions/transaction.actions"
 
 type FilterOption = {
@@ -183,28 +183,32 @@ export function TransactionsTable({
         open={editOpen}
         onOpenChange={handleEditOpenChange}
       />
-      <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
-        <AlertDialogContent className="border-destructive">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete transaction?</DialogTitle>
+            <DialogDescription>
               This action cannot be undone. This will permanently remove the
               transaction.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isDeleting}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
               onClick={confirmDelete}
-              className="gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="gap-2"
               disabled={isDeleting}
             >
               {isDeleting && <Loader2 className="size-4 animate-spin" />}
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <DataTable
         columns={columns}
         data={data}

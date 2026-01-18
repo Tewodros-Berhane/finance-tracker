@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "../prisma";
 
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 10;
 
 export type TransactionFilters = {
   from?: Date;
