@@ -136,6 +136,7 @@ async function BudgetsContent() {
               <BudgetCard
                 key={budget.id}
                 budget={budget}
+                categories={categories}
                 currency={currencySettings.baseCurrency}
               />
             ))}

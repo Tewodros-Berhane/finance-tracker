@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service";
@@ -90,7 +90,11 @@ export async function upsertBudget(
     select: { id: true },
   });
 
-  revalidateTag("budgets", "max");
+  revalidateTag("budgets");
+  revalidateTag("transactions");
+  revalidateTag("summary");
+  revalidatePath("/budgets");
+  revalidatePath("/dashboard");
 
   return { success: true, data: { id: saved.id }, error: null };
 }
@@ -124,7 +128,11 @@ export async function deleteBudget(
     where: { id: existing.id, userId: user.id },
   });
 
-  revalidateTag("budgets", "max");
+  revalidateTag("budgets");
+  revalidateTag("transactions");
+  revalidateTag("summary");
+  revalidatePath("/budgets");
+  revalidatePath("/dashboard");
 
   return { success: true, data: { id: existing.id }, error: null };
 }

@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidateTag } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
@@ -119,7 +119,14 @@ export async function upsertCategory(
         select: { id: true },
       })
 
-  revalidateTag("categories", "max")
+  revalidateTag("categories")
+  revalidateTag("transactions")
+  revalidateTag("budgets")
+  revalidateTag("summary")
+  revalidatePath("/categories")
+  revalidatePath("/transactions")
+  revalidatePath("/budgets")
+  revalidatePath("/dashboard")
 
   return { success: true, data: { id: saved.id }, error: null }
 }
@@ -166,7 +173,14 @@ export async function deleteCategory(
     where: { id: existing.id, userId: user.id },
   })
 
-  revalidateTag("categories", "max")
+  revalidateTag("categories")
+  revalidateTag("transactions")
+  revalidateTag("budgets")
+  revalidateTag("summary")
+  revalidatePath("/categories")
+  revalidatePath("/transactions")
+  revalidatePath("/budgets")
+  revalidatePath("/dashboard")
 
   return { success: true, data: { id: existing.id }, error: null }
 }

@@ -1,7 +1,8 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useCallback, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, Plus, Tag } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -53,6 +54,13 @@ type CategoryOption = {
 type AddBudgetModalProps = {
   categories: CategoryOption[]
   trigger?: ReactNode
+  budget?: {
+    categoryId: string
+    amount: string
+  }
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
 }
 
 const initialState: BudgetActionState = {
@@ -64,8 +72,30 @@ const initialState: BudgetActionState = {
 export function AddBudgetModal({
   categories,
   trigger,
+  budget,
+  open,
+  onOpenChange,
+  showTrigger = true,
 }: AddBudgetModalProps) {
-  const [open, setOpen] = useState(false)
+  const router = useRouter()
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (isControlled) {
+        onOpenChange?.(nextOpen)
+      } else {
+        setInternalOpen(nextOpen)
+      }
+    },
+    [isControlled, onOpenChange]
+  )
+  const isEdit = Boolean(budget)
+  const defaultCategoryId = useMemo(
+    () => budget?.categoryId ?? categories[0]?.id ?? "",
+    [budget?.categoryId, categories]
+  )
   const [state, formAction, isPending] = useActionState<
     BudgetActionState,
     BudgetValues
@@ -74,8 +104,8 @@ export function AddBudgetModal({
   const form = useForm<BudgetValues>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
-      categoryId: categories[0]?.id ?? "",
-      amount: "",
+      categoryId: defaultCategoryId,
+      amount: budget?.amount ?? "",
     },
   })
 
@@ -89,9 +119,18 @@ export function AddBudgetModal({
     if (state.success) {
       toast.success("Budget saved.")
       form.reset()
-      setOpen(false)
+      handleOpenChange(false)
+      router.refresh()
     }
-  }, [form, state.success])
+  }, [form, handleOpenChange, router, state.success])
+
+  useEffect(() => {
+    if (!isOpen) return
+    form.reset({
+      categoryId: defaultCategoryId,
+      amount: budget?.amount ?? "",
+    })
+  }, [budget?.amount, defaultCategoryId, form, isOpen])
 
   const handleSubmit = (values: BudgetValues) => {
     formAction({
@@ -101,20 +140,24 @@ export function AddBudgetModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Budget
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Budget
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Set a budget</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit budget" : "Set a budget"}</DialogTitle>
           <DialogDescription>
-            Assign a monthly limit to keep spending in check.
+            {isEdit
+              ? "Update the monthly limit for this category."
+              : "Assign a monthly limit to keep spending in check."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -129,6 +172,7 @@ export function AddBudgetModal({
                     <Select
                       value={field.value}
                       onValueChange={field.onChange}
+                      disabled={isEdit}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
@@ -170,7 +214,7 @@ export function AddBudgetModal({
             <DialogFooter>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save budget
+                {isEdit ? "Save changes" : "Save budget"}
               </Button>
             </DialogFooter>
           </form>

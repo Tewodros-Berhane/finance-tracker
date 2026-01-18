@@ -1,9 +1,10 @@
 "use client"
 
-import { useTransition } from "react"
+import { useState } from "react"
 import {
   Car,
   Home,
+  Loader2,
   MoreHorizontal,
   Receipt,
   ShoppingBag,
@@ -28,6 +29,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { CategoryForm } from "./category-form"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type CategoryCardProps = {
   category: {
@@ -62,23 +73,31 @@ export function CategoryCard({
   currency = "USD",
 }: CategoryCardProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const iconKey = category.icon?.toLowerCase() ?? "tag"
   const Icon = iconMap[iconKey] ?? Tag
   const monthlySpend = Number(category.monthlySpend)
 
-  const handleDelete = () => {
-    startTransition(async () => {
-      const response = await deleteCategory({ id: category.id })
+  const confirmDelete = async () => {
+    setIsDeleting(true)
+    const response = await deleteCategory({ id: category.id })
+    setIsDeleting(false)
 
-      if (!response.success) {
-        toast.error(response.error ?? "Failed to delete category.")
-        return
-      }
+    if (!response.success) {
+      toast.error(response.error ?? "Failed to delete category.")
+      return
+    }
 
-      toast.success("Category deleted.")
-      router.refresh()
-    })
+    toast.success("Category deleted.")
+    setDeleteOpen(false)
+    router.refresh()
+  }
+
+  const handleDeleteOpenChange = (open: boolean) => {
+    if (isDeleting) return
+    setDeleteOpen(open)
   }
 
   return (
@@ -100,26 +119,19 @@ export function CategoryCard({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" disabled={isDeleting}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <CategoryForm
-              initialData={{
-                id: category.id,
-                name: category.name,
-                type: category.type,
-                icon: category.icon,
-                color: category.color,
-              }}
-              trigger={<DropdownMenuItem>Edit</DropdownMenuItem>}
-            />
+            <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+              Edit
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={handleDelete}
-              disabled={isPending}
+              onSelect={() => setDeleteOpen(true)}
+              disabled={isDeleting}
             >
               Delete
             </DropdownMenuItem>
@@ -138,6 +150,39 @@ export function CategoryCard({
           spent this month
         </p>
       </CardContent>
+      <CategoryForm
+        initialData={{
+          id: category.id,
+          name: category.name,
+          type: category.type,
+          icon: category.icon,
+          color: category.color,
+        }}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        showTrigger={false}
+      />
+      <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
+        <AlertDialogContent className="border-destructive">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will move related transactions into Uncategorized.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

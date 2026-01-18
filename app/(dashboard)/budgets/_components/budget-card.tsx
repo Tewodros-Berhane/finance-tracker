@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useTransition } from "react"
+import { useMemo, useState } from "react"
 import {
   Car,
   Home,
+  Loader2,
   MoreHorizontal,
   Receipt,
   ShoppingBag,
@@ -27,6 +28,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
+import { AddBudgetModal } from "./add-budget-modal"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type BudgetCardProps = {
   budget: {
@@ -39,6 +51,11 @@ type BudgetCardProps = {
     spent: string
     percentage: number
   }
+  categories: {
+    id: string
+    name: string
+    icon?: string | null
+  }[]
   currency?: string
 }
 
@@ -59,9 +76,11 @@ const iconMap: Record<string, typeof Tag> = {
   tag: Tag,
 }
 
-export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
+export function BudgetCard({ budget, categories, currency = "USD" }: BudgetCardProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const spentValue = Number(budget.spent)
   const limitValue = Number(budget.limit)
   const percentValue = Number.isFinite(budget.percentage)
@@ -85,18 +104,24 @@ export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
 
   const remaining = limitValue - spentValue
 
-  const handleDelete = () => {
-    startTransition(async () => {
-      const response = await deleteBudget({ id: budget.id })
+  const confirmDelete = async () => {
+    setIsDeleting(true)
+    const response = await deleteBudget({ id: budget.id })
+    setIsDeleting(false)
 
-      if (!response.success) {
-        toast.error(response.error ?? "Failed to delete budget.")
-        return
-      }
+    if (!response.success) {
+      toast.error(response.error ?? "Failed to delete budget.")
+      return
+    }
 
-      toast.success("Budget deleted.")
-      router.refresh()
-    })
+    toast.success("Budget deleted.")
+    setDeleteOpen(false)
+    router.refresh()
+  }
+
+  const handleDeleteOpenChange = (open: boolean) => {
+    if (isDeleting) return
+    setDeleteOpen(open)
   }
 
   return (
@@ -124,19 +149,19 @@ export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" disabled={isPending}>
+            <Button variant="ghost" size="icon" disabled={isDeleting}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+            <DropdownMenuItem onSelect={() => setEditOpen(true)}>
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={handleDelete}
-              disabled={isPending}
+              onSelect={() => setDeleteOpen(true)}
+              disabled={isDeleting}
             >
               Delete
             </DropdownMenuItem>
@@ -162,6 +187,37 @@ export function BudgetCard({ budget, currency = "USD" }: BudgetCardProps) {
               })} this month.`}
         </p>
       </CardContent>
+      <AddBudgetModal
+        categories={categories}
+        budget={{
+          categoryId: budget.categoryId,
+          amount: budget.limit,
+        }}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        showTrigger={false}
+      />
+      <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
+        <AlertDialogContent className="border-destructive">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete budget?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the budget for this category.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

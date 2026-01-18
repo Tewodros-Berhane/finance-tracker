@@ -1,7 +1,8 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useActionState, useEffect, useMemo, useState } from "react"
+import { useActionState, useCallback, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, Plus } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -56,6 +57,9 @@ type CategoryFormProps = {
     icon: string
     color: string
   }
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
 }
 
 const colorOptions = [
@@ -78,8 +82,24 @@ const initialState: CategoryActionState = {
 export function CategoryForm({
   trigger,
   initialData,
+  open,
+  onOpenChange,
+  showTrigger = true,
 }: CategoryFormProps) {
-  const [open, setOpen] = useState(false)
+  const router = useRouter()
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (isControlled) {
+        onOpenChange?.(nextOpen)
+      } else {
+        setInternalOpen(nextOpen)
+      }
+    },
+    [isControlled, onOpenChange]
+  )
   const [state, formAction, isPending] = useActionState<
     CategoryActionState,
     CategoryValues
@@ -112,9 +132,25 @@ export function CategoryForm({
     if (state.success) {
       toast.success(initialData ? "Category updated." : "Category created.")
       form.reset()
-      setOpen(false)
+      handleOpenChange(false)
+      router.refresh()
     }
-  }, [form, initialData, state.success])
+  }, [form, handleOpenChange, initialData, router, state.success])
+
+  useEffect(() => {
+    if (!isOpen) return
+    form.reset({
+      id: initialData?.id,
+      name: initialData?.name ?? "",
+      type: initialData?.type ?? "EXPENSE",
+      icon:
+        initialData?.icon &&
+        iconOptions.includes(initialData.icon as CategoryIcon)
+          ? (initialData.icon as CategoryIcon)
+          : "tag",
+      color: initialData?.color ?? colorOptions[0],
+    })
+  }, [form, initialData, isOpen])
 
   const title = useMemo(
     () => (initialData ? "Edit category" : "Create category"),
@@ -126,15 +162,17 @@ export function CategoryForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Category
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Category
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
