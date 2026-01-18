@@ -12,6 +12,7 @@ import { z } from "zod"
 
 import {
   createTransaction,
+  updateTransaction,
 } from "@/lib/actions/transaction.actions"
 import { createTransactionSchema } from "@/lib/actions/transaction.schema"
 import { Button } from "@/components/ui/button"
@@ -65,6 +66,18 @@ type AddTransactionModalProps = {
   accounts?: AccountOption[]
   categories?: CategoryOption[]
   trigger?: ReactNode
+  transaction?: {
+    id: string
+    type: TransactionValues["type"]
+    amount: string
+    date: string | Date
+    financialAccountId: string
+    categoryId?: string | null
+    description?: string | null
+    isRecurring?: boolean | null
+  }
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const currencySymbols: Record<string, string> = {
@@ -116,9 +129,15 @@ export function AddTransactionModal({
   accounts: accountsProp = [],
   categories: categoriesProp = [],
   trigger,
+  transaction,
+  open,
+  onOpenChange,
 }: AddTransactionModalProps) {
+  const isEdit = Boolean(transaction?.id)
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const dialogOpen = open ?? internalOpen
+  const setDialogOpen = onOpenChange ?? setInternalOpen
   const [accounts, setAccounts] = useState<AccountOption[]>(accountsProp)
   const [categories, setCategories] = useState<CategoryOption[]>(categoriesProp)
   const [accountsLoading, setAccountsLoading] = useState(false)
@@ -127,20 +146,26 @@ export function AddTransactionModal({
   const [categoriesRequested, setCategoriesRequested] = useState(false)
   const [state, formAction, isPending] = useActionState<
     TransactionActionState,
-    TransactionValues
-  >((_, payload) => createTransaction(payload), initialState)
+    TransactionValues & { id?: string }
+  >(
+    (_, payload) =>
+      payload.id
+        ? updateTransaction(payload as TransactionValues & { id: string })
+        : createTransaction(payload as TransactionValues),
+    initialState
+  )
   const form = useForm<TransactionValues>({
     resolver: zodResolver(transactionSchema) as Resolver<TransactionValues>,
     defaultValues: {
-      type: "EXPENSE",
-      amount: "",
-      date: new Date(),
-      financialAccountId: accounts[0]?.id ?? "",
+      type: transaction?.type ?? "EXPENSE",
+      amount: transaction?.amount ?? "",
+      date: transaction?.date ? new Date(transaction.date) : new Date(),
+      financialAccountId: transaction?.financialAccountId ?? accounts[0]?.id ?? "",
       transferAccountId: "",
       exchangeRate: "",
-      categoryId: undefined,
-      description: "",
-      isRecurring: false,
+      categoryId: transaction?.categoryId ?? undefined,
+      description: transaction?.description ?? "",
+      isRecurring: transaction?.isRecurring ?? false,
     },
   })
 
@@ -188,7 +213,7 @@ export function AddTransactionModal({
   }, [categoriesProp])
 
   useEffect(() => {
-    if (!open) return
+    if (!dialogOpen) return
 
     const fetchAccounts = async () => {
       setAccountsLoading(true)
@@ -260,14 +285,44 @@ export function AddTransactionModal({
     accountsRequested,
     categoriesLoading,
     categoriesRequested,
-    open,
+    dialogOpen,
   ])
 
   useEffect(() => {
-    if (open) return
+    if (dialogOpen) return
     setAccountsRequested(false)
     setCategoriesRequested(false)
-  }, [open])
+  }, [dialogOpen])
+
+  useEffect(() => {
+    if (!dialogOpen) return
+    if (!transaction) {
+      form.reset({
+        type: "EXPENSE",
+        amount: "",
+        date: new Date(),
+        financialAccountId: accounts[0]?.id ?? "",
+        transferAccountId: "",
+        exchangeRate: "",
+        categoryId: undefined,
+        description: "",
+        isRecurring: false,
+      })
+      return
+    }
+
+    form.reset({
+      type: transaction.type,
+      amount: transaction.amount ?? "",
+      date: transaction.date ? new Date(transaction.date) : new Date(),
+      financialAccountId: transaction.financialAccountId ?? accounts[0]?.id ?? "",
+      transferAccountId: "",
+      exchangeRate: "",
+      categoryId: transaction.categoryId ?? undefined,
+      description: transaction.description ?? "",
+      isRecurring: transaction.isRecurring ?? false,
+    })
+  }, [accounts, dialogOpen, form, transaction])
 
   useEffect(() => {
     const currentAccountId = form.getValues("financialAccountId")
@@ -322,15 +377,17 @@ export function AddTransactionModal({
 
   useEffect(() => {
     if (state.success) {
-      toast.success("Transaction added successfully!")
-      setOpen(false)
-      form.reset()
+      toast.success(
+        isEdit ? "Transaction updated successfully!" : "Transaction added successfully!"
+      )
+      setDialogOpen(false)
       router.refresh()
     }
-  }, [form, router, state.success])
+  }, [isEdit, router, setDialogOpen, state.success])
 
   const handleSubmit = (values: TransactionValues) => {
     formAction({
+      ...(isEdit && transaction?.id ? { id: transaction.id } : {}),
       ...values,
       amount: values.amount.trim(),
       exchangeRate: isCrossCurrencyTransfer
@@ -351,14 +408,16 @@ export function AddTransactionModal({
         availableTransferAccounts.length === 0 ||
         (isCrossCurrencyTransfer && !exchangeRateValue)))
 
+  const triggerNode = trigger ?? (isEdit ? null : <AddTransactionTrigger />)
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? <AddTransactionTrigger />}
-      </DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {triggerNode ? <DialogTrigger asChild>{triggerNode}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-130">
         <DialogHeader>
-          <DialogTitle>Add transaction</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Edit transaction" : "Add transaction"}
+          </DialogTitle>
           <DialogDescription>
             Capture income, expenses, or transfers in seconds.
           </DialogDescription>
@@ -379,6 +438,7 @@ export function AddTransactionModal({
                   <TabsTrigger
                     key={type.value}
                     value={type.value}
+                    disabled={isEdit && type.value === "TRANSFER"}
                     className={type.className}
                   >
                     {type.label}
@@ -710,7 +770,7 @@ export function AddTransactionModal({
             <DialogFooter>
               <Button type="submit" disabled={isSubmitDisabled}>
                 {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Add transaction
+                {isEdit ? "Save changes" : "Add transaction"}
               </Button>
             </DialogFooter>
           </form>

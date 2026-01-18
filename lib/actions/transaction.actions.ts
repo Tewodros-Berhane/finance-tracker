@@ -7,7 +7,10 @@ import { Prisma } from "@prisma/client";
 import { getAuthenticatedUser } from "@/lib/services/auth.service";
 import { updateAccountBalance } from "@/lib/services/account.service";
 import { prisma } from "../prisma";
-import { createTransactionSchema } from "./transaction.schema";
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+} from "./transaction.schema";
 
 const deleteTransactionSchema = z.object({
   id: z.string().min(1),
@@ -324,6 +327,133 @@ export async function deleteTransaction(
   return {
     success: true,
     data: { id: existing.id },
+    error: null,
+  };
+}
+
+export async function updateTransaction(
+  state: TransactionActionState,
+  input: z.infer<typeof updateTransactionSchema>
+): Promise<TransactionActionState>;
+export async function updateTransaction(
+  input: z.infer<typeof updateTransactionSchema>
+): Promise<TransactionActionState>;
+export async function updateTransaction(
+  stateOrInput:
+    | TransactionActionState
+    | z.infer<typeof updateTransactionSchema>,
+  maybeInput?: z.infer<typeof updateTransactionSchema>
+): Promise<TransactionActionState> {
+  const payload =
+    maybeInput ?? (stateOrInput as z.infer<typeof updateTransactionSchema>);
+  const parsed = updateTransactionSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      data: null,
+      error: "Invalid transaction payload.",
+    };
+  }
+
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { success: false, data: null, error: "Unauthorized." };
+  }
+
+  const data = parsed.data;
+  const existing = await prisma.transaction.findFirst({
+    where: {
+      id: data.id,
+      userId: user.id,
+    },
+    select: {
+      id: true,
+      type: true,
+      financialAccountId: true,
+    },
+  });
+
+  if (!existing) {
+    return {
+      success: false,
+      data: null,
+      error: "Transaction not found.",
+    };
+  }
+
+  if (existing.type === "TRANSFER" || data.type === "TRANSFER") {
+    return {
+      success: false,
+      data: null,
+      error: "Transfers cannot be edited yet. Delete and recreate instead.",
+    };
+  }
+
+  const account = await prisma.financialAccount.findFirst({
+    where: {
+      id: data.financialAccountId,
+      userId: user.id,
+    },
+    select: { id: true },
+  });
+
+  if (!account) {
+    return {
+      success: false,
+      data: null,
+      error: "Account not found.",
+    };
+  }
+
+  if (data.categoryId && data.type === "EXPENSE") {
+    const category = await prisma.category.findFirst({
+      where: {
+        id: data.categoryId,
+        userId: user.id,
+        type: "EXPENSE",
+      },
+      select: { id: true },
+    });
+
+    if (!category) {
+      return {
+        success: false,
+        data: null,
+        error: "Category not found.",
+      };
+    }
+  }
+
+  const updated = await prisma.transaction.update({
+    where: { id: existing.id },
+    data: {
+      financialAccountId: data.financialAccountId,
+      categoryId: data.type === "EXPENSE" ? data.categoryId ?? null : null,
+      type: data.type,
+      amount: data.amount,
+      date: data.date,
+      description: data.description ?? null,
+      isRecurring: data.isRecurring,
+    },
+    select: { id: true, financialAccountId: true },
+  });
+
+  revalidateTag("transactions", "max");
+  revalidateTag("summary", "max");
+  revalidateTag("accounts", "max");
+  const accountIds = new Set([
+    existing.financialAccountId,
+    updated.financialAccountId,
+  ]);
+  accountIds.forEach((id) => revalidateTag(`account-${id}`, "max"));
+  revalidatePath("/transactions");
+  revalidatePath("/accounts");
+  revalidatePath("/dashboard");
+
+  return {
+    success: true,
+    data: { id: updated.id },
     error: null,
   };
 }

@@ -42,6 +42,12 @@ export type TransactionRow = {
   accountCurrency?: string | null
   type: "INCOME" | "EXPENSE" | "TRANSFER"
   amount: string
+  isRecurring: boolean
+}
+
+type TransactionsTableMeta = {
+  onEdit?: (transaction: TransactionRow) => void
+  onDelete?: (transaction: TransactionRow) => void
 }
 
 const categoryIconMap = {
@@ -107,16 +113,19 @@ export const columns: ColumnDef<TransactionRow>[] = [
     accessorKey: "description",
     header: "Description",
     filterFn: "includesString",
-    cell: ({ row }) => (
-      <div className="min-w-0 max-w-55">
-        <p className="text-sm font-medium truncate">
-          {row.getValue("description")}
-        </p>
-        <p className="text-muted-foreground text-xs truncate">
-          {row.original.accountName}
-        </p>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const description = row.getValue<string>("description")
+      return (
+        <div className="min-w-0 max-w-55">
+          <p className="text-sm font-medium truncate">
+            {description || "Untitled transaction"}
+          </p>
+          <p className="text-muted-foreground text-xs truncate">
+            {row.original.accountName}
+          </p>
+        </div>
+      )
+    },
     meta: {
       className: "w-[240px] max-w-[240px]",
     },
@@ -207,26 +216,33 @@ export const columns: ColumnDef<TransactionRow>[] = [
   },
   {
     id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreHorizontal className="size-4" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>
-            <Pencil className="size-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive focus:text-destructive">
-            <Trash2 className="size-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as TransactionsTableMeta | undefined
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="size-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => meta?.onEdit?.(row.original)}>
+              <Pencil className="size-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => meta?.onDelete?.(row.original)}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
   },
 ]

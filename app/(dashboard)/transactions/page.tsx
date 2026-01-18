@@ -134,6 +134,7 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
     financialAccount: FinancialAccount
     type: "INCOME" | "EXPENSE" | "TRANSFER"
     amount: string
+    isRecurring: boolean
   }
 
   interface TransactionsTableRow {
@@ -149,13 +150,14 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
     accountCurrency: string
     type: "INCOME" | "EXPENSE" | "TRANSFER"
     amount: string
+    isRecurring: boolean
   }
 
   const tableData: TransactionsTableRow[] = transactionsResult.data.map(
     (transaction: TransactionWithRelations) => ({
       id: transaction.id,
       date: transaction.date,
-      description: transaction.description ?? "Untitled transaction",
+      description: transaction.description ?? "",
       categoryId: transaction.category?.id ?? "uncategorized",
       categoryName: transaction.category?.name ?? "Uncategorized",
       categoryColor: transaction.category?.color ?? null,
@@ -165,6 +167,7 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
       accountCurrency: transaction.financialAccount.currency ?? "USD",
       type: transaction.type,
       amount: String(transaction.amount),
+      isRecurring: transaction.isRecurring,
     })
   )
 
@@ -251,6 +254,8 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
         data={tableData}
         accounts={accountOptions}
         categories={categoryOptions}
+        formAccounts={modalAccounts}
+        formCategories={modalCategories}
         pageSize={transactionsResult.meta.limit}
         hasNext={transactionsResult.meta.hasNext}
         hasPrev={transactionsResult.meta.hasPrev}

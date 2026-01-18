@@ -52,6 +52,10 @@ type DataTableProps<TData, TValue> = {
   data: TData[]
   toolbar: Omit<React.ComponentProps<typeof DataTableToolbar>, "table">
   pagination?: CursorPagination | OffsetPagination
+  meta?: {
+    onEdit?: (row: TData) => void
+    onDelete?: (row: TData) => void
+  }
 }
 
 type ColumnMeta = {
@@ -63,6 +67,7 @@ export function DataTable<TData, TValue>({
   data,
   toolbar,
   pagination,
+  meta,
 }: DataTableProps<TData, TValue>) {
   const isCursorPagination = pagination?.mode === "cursor"
   const [rowSelection, setRowSelection] = React.useState({})
@@ -87,6 +92,7 @@ export function DataTable<TData, TValue>({
     enableRowSelection: true,
     manualPagination: Boolean(pagination) && !isCursorPagination,
     pageCount,
+    meta,
     state: {
       sorting,
       columnFilters,

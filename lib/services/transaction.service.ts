@@ -22,6 +22,7 @@ type TransactionRow = {
   description: string | null;
   amount: string;
   type: "INCOME" | "EXPENSE" | "TRANSFER";
+  isRecurring: boolean;
   category: {
     id: string;
     name: string;
@@ -146,6 +147,7 @@ export async function getTransactions(
           description: true,
           amount: true,
           type: true,
+          isRecurring: true,
           category: {
             select: {
               id: true,
@@ -181,6 +183,7 @@ export async function getTransactions(
           description: row.description,
           amount: row.amount.toString(),
           type: row.type,
+          isRecurring: row.isRecurring,
           category: row.category
             ? {
                 id: row.category.id,
