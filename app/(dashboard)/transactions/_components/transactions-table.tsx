@@ -184,7 +184,7 @@ export function TransactionsTable({
         onOpenChange={handleEditOpenChange}
       />
       <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-destructive">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -196,7 +196,7 @@ export function TransactionsTable({
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="gap-2"
+              className="gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >
               {isDeleting && <Loader2 className="size-4 animate-spin" />}

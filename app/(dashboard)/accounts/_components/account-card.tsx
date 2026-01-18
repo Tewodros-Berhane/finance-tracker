@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState } from "react";
 import {
   CreditCard,
   Landmark,
+  Loader2,
   MoreHorizontal,
   PiggyBank,
   Wallet,
@@ -29,6 +30,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const typeLabels: Record<AccountType, string> = {
   CHECKING: "Checking",
@@ -60,7 +71,8 @@ type AccountCardProps = {
 
 export function AccountCard({ account }: AccountCardProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const Icon = typeIcons[account.type] ?? Wallet;
   const balanceValue = Number(account.currentBalance);
   const balanceColor =
@@ -68,18 +80,24 @@ export function AccountCard({ account }: AccountCardProps) {
       ? "text-destructive"
       : "text-foreground";
 
-  const handleDelete = () => {
-    startTransition(async () => {
-      const response = await deleteAccount({ id: account.id });
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    const response = await deleteAccount({ id: account.id });
+    setIsDeleting(false);
 
-      if (!response.success) {
-        toast.error(response.error ?? "Failed to delete account.");
-        return;
-      }
+    if (!response.success) {
+      toast.error(response.error ?? "Failed to delete account.");
+      return;
+    }
 
-      toast.success("Account deleted.");
-      router.refresh();
-    });
+    toast.success("Account deleted.");
+    setDeleteOpen(false);
+    router.refresh();
+  };
+
+  const handleDeleteOpenChange = (open: boolean) => {
+    if (isDeleting) return;
+    setDeleteOpen(open);
   };
 
   return (
@@ -99,7 +117,7 @@ export function AccountCard({ account }: AccountCardProps) {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" disabled={isPending}>
+            <Button variant="ghost" size="icon" disabled={isDeleting}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -111,8 +129,8 @@ export function AccountCard({ account }: AccountCardProps) {
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={handleDelete}
-              disabled={isPending}
+              onSelect={() => setDeleteOpen(true)}
+              disabled={isDeleting}
             >
               Delete
             </DropdownMenuItem>
@@ -132,6 +150,27 @@ export function AccountCard({ account }: AccountCardProps) {
           </Link>
         </Button>
       </CardFooter>
+      <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
+        <AlertDialogContent className="border-destructive">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the account and its transactions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

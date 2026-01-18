@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidateTag } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { z } from "zod"
 
 import { getAuthenticatedUser } from "@/lib/services/auth.service"
@@ -67,8 +67,11 @@ export async function createAccount(
     select: { id: true },
   })
 
-  revalidateTag("accounts", "max")
-  revalidateTag("summary", "max")
+  revalidateTag("accounts")
+  revalidateTag("summary")
+  revalidateTag(`account-${created.id}`)
+  revalidatePath("/accounts")
+  revalidatePath("/dashboard")
 
   return {
     success: true,
@@ -120,8 +123,11 @@ export async function deleteAccount(
     },
   })
 
-  revalidateTag("accounts", "max")
-  revalidateTag("summary", "max")
+  revalidateTag("accounts")
+  revalidateTag("summary")
+  revalidateTag(`account-${data.id}`)
+  revalidatePath("/accounts")
+  revalidatePath("/dashboard")
 
   return {
     success: true,
