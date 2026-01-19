@@ -43,6 +43,10 @@ export const metadata: Metadata = {
       },
     ],
   },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
   twitter: {
     card: "summary_large_image",
     title: siteConfig.name,

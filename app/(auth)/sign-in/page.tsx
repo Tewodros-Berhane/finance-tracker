@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { createMetadata } from "@/lib/seo"
+import { Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +26,9 @@ export default function SignInPage() {
     <div className="min-h-screen w-full px-4 py-10 flex items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="mx-auto flex size-10 items-center justify-center rounded-full border bg-muted">
+            <Wallet className="size-5" />
+          </div>
           <CardTitle className="text-2xl">Sign in</CardTitle>
           <CardDescription>Continue to Vantage</CardDescription>
         </CardHeader>
