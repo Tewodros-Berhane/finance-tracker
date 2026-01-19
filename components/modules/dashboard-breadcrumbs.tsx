@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Fragment } from "react"
 import { usePathname } from "next/navigation"
 
 import {
@@ -43,50 +44,66 @@ export function DashboardBreadcrumbs() {
     label: formatSegment(baseSegment),
   }
   const trailSegments = segments.slice(1)
+  const crumbs: Array<{
+    label: string
+    href?: string
+    current?: boolean
+    muted?: boolean
+  }> = [
+    {
+      label: meta.group,
+      muted: true,
+    },
+  ]
+
+  if (trailSegments.length === 0) {
+    crumbs.push({
+      label: meta.label,
+      current: true,
+    })
+  } else {
+    crumbs.push({
+      label: meta.label,
+      href: `/${baseSegment}`,
+    })
+
+    trailSegments.forEach((segment, index) => {
+      const href = `/${[
+        baseSegment,
+        ...trailSegments.slice(0, index + 1),
+      ].join("/")}`
+      const label = formatSegment(segment)
+      const isLast = index === trailSegments.length - 1
+
+      crumbs.push({
+        label,
+        href: isLast ? undefined : href,
+        current: isLast,
+      })
+    })
+  }
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        <BreadcrumbItem>
-          <span className="text-muted-foreground text-sm">{meta.group}</span>
-          <BreadcrumbSeparator />
-        </BreadcrumbItem>
-
-        {trailSegments.length === 0 ? (
-          <BreadcrumbItem>
-            <BreadcrumbPage>{meta.label}</BreadcrumbPage>
-          </BreadcrumbItem>
-        ) : (
-          <>
+        {crumbs.map((crumb, index) => (
+          <Fragment key={`${crumb.label}-${index}`}>
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href={`/${baseSegment}`}>{meta.label}</Link>
-              </BreadcrumbLink>
-              <BreadcrumbSeparator />
+              {crumb.current ? (
+                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+              ) : crumb.href ? (
+                <BreadcrumbLink asChild>
+                  <Link href={crumb.href}>{crumb.label}</Link>
+                </BreadcrumbLink>
+              ) : (
+                <span className="text-muted-foreground text-sm">
+                  {crumb.label}
+                </span>
+              )}
             </BreadcrumbItem>
-            {trailSegments.map((segment, index) => {
-              const href = `/${[
-                baseSegment,
-                ...trailSegments.slice(0, index + 1),
-              ].join("/")}`
-              const label = formatSegment(segment)
-              const isLast = index === trailSegments.length - 1
-
-              return (
-                <BreadcrumbItem key={href}>
-                  {isLast ? (
-                    <BreadcrumbPage>{label}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <Link href={href}>{label}</Link>
-                    </BreadcrumbLink>
-                  )}
-                  {!isLast && <BreadcrumbSeparator />}
-                </BreadcrumbItem>
-              )
-            })}
-          </>
-        )}
+            {index < crumbs.length - 1 ? <BreadcrumbSeparator /> : null}
+          </Fragment>
+        ))}
       </BreadcrumbList>
     </Breadcrumb>
   )
