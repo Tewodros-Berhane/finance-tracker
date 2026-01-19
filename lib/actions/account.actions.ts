@@ -67,9 +67,9 @@ export async function createAccount(
     select: { id: true },
   })
 
-  revalidateTag("accounts")
-  revalidateTag("summary")
-  revalidateTag(`account-${created.id}`)
+  revalidateTag("accounts", "max")
+  revalidateTag("summary", "max")
+  revalidateTag(`account-${created.id}`, "max")
   revalidatePath("/accounts")
   revalidatePath("/dashboard")
 
@@ -123,9 +123,9 @@ export async function deleteAccount(
     },
   })
 
-  revalidateTag("accounts")
-  revalidateTag("summary")
-  revalidateTag(`account-${data.id}`)
+  revalidateTag("accounts", "max")
+  revalidateTag("summary", "max")
+  revalidateTag(`account-${data.id}`, "max")
   revalidatePath("/accounts")
   revalidatePath("/dashboard")
 

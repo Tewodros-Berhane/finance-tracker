@@ -119,10 +119,10 @@ export async function upsertCategory(
         select: { id: true },
       })
 
-  revalidateTag("categories")
-  revalidateTag("transactions")
-  revalidateTag("budgets")
-  revalidateTag("summary")
+  revalidateTag("categories", "max")
+  revalidateTag("transactions", "max")
+  revalidateTag("budgets", "max")
+  revalidateTag("summary", "max")
   revalidatePath("/categories")
   revalidatePath("/transactions")
   revalidatePath("/budgets")
@@ -173,10 +173,10 @@ export async function deleteCategory(
     where: { id: existing.id, userId: user.id },
   })
 
-  revalidateTag("categories")
-  revalidateTag("transactions")
-  revalidateTag("budgets")
-  revalidateTag("summary")
+  revalidateTag("categories", "max")
+  revalidateTag("transactions", "max")
+  revalidateTag("budgets", "max")
+  revalidateTag("summary", "max")
   revalidatePath("/categories")
   revalidatePath("/transactions")
   revalidatePath("/budgets")

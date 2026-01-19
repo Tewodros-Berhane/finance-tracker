@@ -90,9 +90,9 @@ export async function upsertBudget(
     select: { id: true },
   });
 
-  revalidateTag("budgets");
-  revalidateTag("transactions");
-  revalidateTag("summary");
+  revalidateTag("budgets", "max");
+  revalidateTag("transactions", "max");
+  revalidateTag("summary", "max");
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
 
@@ -128,9 +128,9 @@ export async function deleteBudget(
     where: { id: existing.id, userId: user.id },
   });
 
-  revalidateTag("budgets");
-  revalidateTag("transactions");
-  revalidateTag("summary");
+  revalidateTag("budgets", "max");
+  revalidateTag("transactions", "max");
+  revalidateTag("summary", "max");
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
 
