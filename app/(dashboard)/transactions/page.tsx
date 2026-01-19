@@ -22,8 +22,19 @@ export const metadata = createMetadata({
   canonical: "/transactions",
 })
 
-const getParam = (value: string | string[] | undefined) =>
-  Array.isArray(value) ? value[0] : value
+type SearchParamsLike =
+  | Record<string, string | string[] | undefined>
+  | URLSearchParams
+  | undefined
+
+const getSearchParam = (params: SearchParamsLike, key: string) => {
+  if (!params) return undefined
+  if ("get" in params && typeof params.get === "function") {
+    return params.get(key) ?? undefined
+  }
+  const value = params[key]
+  return Array.isArray(value) ? value[0] : value
+}
 
 const parseDate = (value: string | undefined) => {
   if (!value) return undefined
@@ -31,107 +42,60 @@ const parseDate = (value: string | undefined) => {
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
-function TransactionsSkeleton() {
+function TransactionsTableSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <Card>
+      <CardContent className="space-y-4 py-6">
+        <Skeleton className="h-8 w-72" />
         <div className="space-y-2">
-          <Skeleton className="h-7 w-40" />
-          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
-        <Skeleton className="h-9 w-40" />
-      </div>
-      <Card>
-        <CardContent className="space-y-4 py-6">
-          <Skeleton className="h-8 w-72" />
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
-async function TransactionsContent({ searchParams }: TransactionsPageProps) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const user = await getAuthenticatedUser()
-  if (!user) {
-    redirect("/sign-in")
-  }
+type TransactionsResult = Awaited<ReturnType<typeof getTransactions>>
 
-  const userId = user.id
+type TransactionsTableSectionProps = {
+  transactionsPromise: Promise<TransactionsResult>
+  accountOptions: { label: string; value: string }[]
+  categoryOptions: { label: string; value: string }[]
+  modalAccounts: { id: string; name: string; currency: string }[]
+  modalCategories: { id: string; name: string; type: "INCOME" | "EXPENSE" }[]
+  currentPage: number
+  pageSize: number
+}
 
-  const limit = Number(getParam(resolvedSearchParams?.limit)) || undefined
-  const cursor = getParam(resolvedSearchParams?.cursor) ?? undefined
-  const directionParam = getParam(resolvedSearchParams?.direction)
-  const direction =
-    directionParam === "prev" || directionParam === "next"
-      ? directionParam
-      : undefined
-  const categoryId =
-    getParam(resolvedSearchParams?.categoryId) ??
-    getParam(resolvedSearchParams?.category)
-  const accountId =
-    getParam(resolvedSearchParams?.accountId) ??
-    getParam(resolvedSearchParams?.account)
-  const from =
-    parseDate(getParam(resolvedSearchParams?.startDate)) ??
-    parseDate(getParam(resolvedSearchParams?.from))
-  const to =
-    parseDate(getParam(resolvedSearchParams?.endDate)) ??
-    parseDate(getParam(resolvedSearchParams?.to))
-
-  const [transactionsResult, accounts, categories] = await Promise.all([
-    getTransactions(userId, {
-      limit,
-      cursor,
-      direction,
-      accountId: accountId ?? undefined,
-      categoryId: categoryId ?? undefined,
-      from,
-      to,
-    }),
-    prisma.financialAccount.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        name: true,
-        currency: true,
-      },
-    }),
-    prisma.category.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-      },
-    }),
-  ])
-
-  interface TransactionCategory {
-    id: string
-    name: string
-    color?: string | null
-    icon?: string | null
-  }
-
-  interface FinancialAccount {
-    id: string
-    name: string
-    currency?: string | null
-  }
+async function TransactionsTableSection({
+  transactionsPromise,
+  accountOptions,
+  categoryOptions,
+  modalAccounts,
+  modalCategories,
+  currentPage,
+  pageSize,
+}: TransactionsTableSectionProps) {
+  const transactionsResult = await transactionsPromise
 
   interface TransactionWithRelations {
     id: string
     date: string
     description?: string | null
-    category?: TransactionCategory | null
-    financialAccount: FinancialAccount
+    category?: {
+      id: string
+      name: string
+      color?: string | null
+      icon?: string | null
+    } | null
+    financialAccount: {
+      id: string
+      name: string
+      currency?: string | null
+    }
     type: "INCOME" | "EXPENSE" | "TRANSFER"
     amount: string
     isRecurring: boolean
@@ -153,7 +117,7 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
     isRecurring: boolean
   }
 
-  const tableData: TransactionsTableRow[] = transactionsResult.data.map(
+  const tableData: TransactionsTableRow[] = transactionsResult.transactions.map(
     (transaction: TransactionWithRelations) => ({
       id: transaction.id,
       date: transaction.date,
@@ -171,53 +135,121 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
     })
   )
 
-  interface AccountOption {
-    label: string
-    value: string
+  if (tableData.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
+          <p className="text-muted-foreground text-sm">
+            No transactions found. Add one to start tracking.
+          </p>
+          <AddTransactionModal
+            accounts={modalAccounts}
+            categories={modalCategories}
+            trigger={<Button variant="outline">Create Transaction</Button>}
+          />
+        </CardContent>
+      </Card>
+    )
   }
 
-  const accountOptions: AccountOption[] = accounts.map(
-    (account: FinancialAccount) => ({
-      label: account.name,
-      value: account.id,
-    })
+  return (
+    <TransactionsTable
+      data={tableData}
+      accounts={accountOptions}
+      categories={categoryOptions}
+      formAccounts={modalAccounts}
+      formCategories={modalCategories}
+      currentPage={currentPage}
+      totalPages={transactionsResult.totalPages}
+      pageSize={pageSize}
+    />
   )
+}
 
-  interface Category {
-    id: string
-    name: string
-    type?: "INCOME" | "EXPENSE" | "TRANSFER" | null
+export default async function TransactionsPage({
+  searchParams,
+}: TransactionsPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const user = await getAuthenticatedUser()
+  if (!user) {
+    redirect("/sign-in")
   }
 
-  interface CategoryOption {
-    label: string
-    value: string
-  }
+  const userId = user.id
 
-  const categoryOptions: CategoryOption[] = [
-    ...categories.map((category: Category) => ({
+  const limitValue = getSearchParam(resolvedSearchParams, "limit")
+  const parsedLimit = limitValue ? Number(limitValue) : Number.NaN
+  const pageSize =
+    Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10
+  const pageValue = getSearchParam(resolvedSearchParams, "page")
+  const parsedPage = pageValue ? Number(pageValue) : Number.NaN
+  const page =
+    Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
+  const categoryId =
+    getSearchParam(resolvedSearchParams, "categoryId") ??
+    getSearchParam(resolvedSearchParams, "category")
+  const accountId =
+    getSearchParam(resolvedSearchParams, "accountId") ??
+    getSearchParam(resolvedSearchParams, "account")
+  const from =
+    parseDate(getSearchParam(resolvedSearchParams, "startDate")) ??
+    parseDate(getSearchParam(resolvedSearchParams, "from"))
+  const to =
+    parseDate(getSearchParam(resolvedSearchParams, "endDate")) ??
+    parseDate(getSearchParam(resolvedSearchParams, "to"))
+
+  const transactionsPromise = getTransactions(userId, {
+    limit: pageSize,
+    page,
+    accountId: accountId ?? undefined,
+    categoryId: categoryId ?? undefined,
+    from,
+    to,
+  })
+
+  const [accounts, categories] = await Promise.all([
+    prisma.financialAccount.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        currency: true,
+      },
+    }),
+    prisma.category.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+      },
+    }),
+  ])
+
+  const accountOptions = accounts.map((account) => ({
+    label: account.name,
+    value: account.id,
+  }))
+
+  const categoryOptions = [
+    ...categories.map((category) => ({
       label: category.name,
       value: category.id,
     })),
     { label: "Uncategorized", value: "uncategorized" },
   ]
 
-  const modalAccounts = accounts.map((account: FinancialAccount) => ({
+  const modalAccounts = accounts.map((account) => ({
     id: account.id,
     name: account.name,
     currency: account.currency ?? "USD",
   }))
 
-  const modalCategories = categories
-    .filter(
-      (category): category is Category & { type: "INCOME" | "EXPENSE" } =>
-        category.type === "INCOME" || category.type === "EXPENSE"
-    )
-    .map((category) => ({
-      id: category.id,
-      name: category.name,
-      type: category.type,
-    }))
+  const modalCategories = categories.map((category) => ({
+    id: category.id,
+    name: category.name,
+    type: category.type,
+  }))
 
   return (
     <div className="flex flex-col gap-6">
@@ -235,43 +267,17 @@ async function TransactionsContent({ searchParams }: TransactionsPageProps) {
         />
       </header>
 
-      {tableData.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-            <p className="text-muted-foreground text-sm">
-              No transactions found. Add one to start tracking.
-            </p>
-            <AddTransactionModal
-              accounts={modalAccounts}
-              categories={modalCategories}
-              trigger={<Button variant="outline">Create Transaction</Button>}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <TransactionsTable
-        data={tableData}
-        accounts={accountOptions}
-        categories={categoryOptions}
-        formAccounts={modalAccounts}
-        formCategories={modalCategories}
-        pageSize={transactionsResult.meta.limit}
-        hasNext={transactionsResult.meta.hasNext}
-        hasPrev={transactionsResult.meta.hasPrev}
-        nextCursor={transactionsResult.meta.nextCursor}
-        prevCursor={transactionsResult.meta.prevCursor}
-      />
+      <Suspense fallback={<TransactionsTableSkeleton />}>
+        <TransactionsTableSection
+          transactionsPromise={transactionsPromise}
+          accountOptions={accountOptions}
+          categoryOptions={categoryOptions}
+          modalAccounts={modalAccounts}
+          modalCategories={modalCategories}
+          currentPage={page}
+          pageSize={pageSize}
+        />
+      </Suspense>
     </div>
-  )
-}
-
-export default function TransactionsPage({
-  searchParams,
-}: TransactionsPageProps) {
-  return (
-    <Suspense fallback={<TransactionsSkeleton />}>
-      <TransactionsContent searchParams={searchParams} />
-    </Suspense>
   )
 }

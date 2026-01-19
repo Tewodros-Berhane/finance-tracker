@@ -156,6 +156,7 @@ model Transaction {
   isRecurring        Boolean         @default(false)
 
   @@index([userId])
+  @@index([userId, date, id])
   @@index([financialAccountId])
   @@index([categoryId])
 }

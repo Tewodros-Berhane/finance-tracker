@@ -91,7 +91,8 @@ export async function upsertBudget(
   });
 
   revalidateTag("budgets", "max");
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
@@ -129,7 +130,8 @@ export async function deleteBudget(
   });
 
   revalidateTag("budgets", "max");
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidatePath("/budgets");
   revalidatePath("/dashboard");

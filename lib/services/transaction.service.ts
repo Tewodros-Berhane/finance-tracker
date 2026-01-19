@@ -1,10 +1,12 @@
 import { unstable_cache } from "next/cache";
 import { endOfDay } from "date-fns";
+import { createHash } from "crypto";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "../prisma";
 
 const DEFAULT_LIMIT = 10;
+const COUNT_CACHE_SECONDS = 300;
 
 export type TransactionFilters = {
   from?: Date;
@@ -12,8 +14,7 @@ export type TransactionFilters = {
   accountId?: string;
   categoryId?: string;
   limit?: number;
-  cursor?: string;
-  direction?: "next" | "prev";
+  page?: number;
 };
 
 type TransactionRow = {
@@ -37,14 +38,9 @@ type TransactionRow = {
 };
 
 type TransactionResult = {
-  data: TransactionRow[];
-  meta: {
-    limit: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-    nextCursor: string | null;
-    prevCursor: string | null;
-  };
+  transactions: TransactionRow[];
+  totalCount: number;
+  totalPages: number;
 };
 
 export type RecentTransaction = {
@@ -98,49 +94,62 @@ const buildWhereClause = (
   return where;
 };
 
+const buildFilterHash = (filters: TransactionFilters) => {
+  const payload = {
+    from: filters.from?.toISOString() ?? "",
+    to: filters.to?.toISOString() ?? "",
+    accountId: filters.accountId ?? "",
+    categoryId: filters.categoryId ?? "",
+  };
+
+  return createHash("sha256")
+    .update(JSON.stringify(payload))
+    .digest("hex")
+    .slice(0, 12);
+};
+
 export async function getTransactions(
   userId: string,
   filters: TransactionFilters = {}
 ): Promise<TransactionResult> {
   const limit =
     filters.limit && filters.limit > 0 ? filters.limit : DEFAULT_LIMIT;
-  const cursor = filters.cursor ?? undefined;
-  const direction = filters.direction ?? "next";
+  const page = filters.page && filters.page > 0 ? filters.page : 1;
+  const filterHash = buildFilterHash(filters);
 
-  const cacheKey = [
-    "transactions",
+  const where = buildWhereClause(userId, filters);
+  const countCacheKey = [
+    "transactions-count",
     userId,
-    JSON.stringify({
-      from: filters.from?.toISOString(),
-      to: filters.to?.toISOString(),
-      accountId: filters.accountId ?? "",
-      categoryId: filters.categoryId ?? "",
-      limit,
-      cursor: cursor ?? "",
-      direction,
-    }),
+    filterHash,
+  ];
+  const pageCacheKey = [
+    "transactions-page",
+    userId,
+    filterHash,
+    `page:${page}`,
+    `limit:${limit}`,
   ];
 
-  const cached = unstable_cache(
-    async () => {
-      const where = buildWhereClause(userId, filters);
-      const isPrev = direction === "prev" && Boolean(cursor);
-      const orderBy = isPrev
-        ? [
-            { date: "asc" as const },
-            { id: "asc" as const },
-          ]
-        : [
-            { date: "desc" as const },
-            { id: "desc" as const },
-          ];
+  const cachedCount = unstable_cache(
+    async () => prisma.transaction.count({ where }),
+    countCacheKey,
+    {
+      tags: [`transactions-count:${userId}`],
+      revalidate: COUNT_CACHE_SECONDS,
+    }
+  );
 
-      const rows = await prisma.transaction.findMany({
+  const cachedPage = unstable_cache(
+    async () =>
+      prisma.transaction.findMany({
         where,
-        orderBy,
-        take: limit + 1,
-        skip: cursor ? 1 : 0,
-        cursor: cursor ? { id: cursor } : undefined,
+        orderBy: [
+          { date: "desc" as const },
+          { id: "desc" as const },
+        ],
+        skip: (page - 1) * limit,
+        take: limit,
         select: {
           id: true,
           date: true,
@@ -164,54 +173,45 @@ export async function getTransactions(
             },
           },
         },
-      });
-
-      const hasExtra = rows.length > limit;
-      const sliced = hasExtra ? rows.slice(0, limit) : rows;
-      const orderedRows = isPrev ? [...sliced].reverse() : sliced;
-
-      const hasPrev = isPrev ? hasExtra : Boolean(cursor);
-      const hasNext = isPrev ? Boolean(cursor) : hasExtra;
-      const prevCursor = hasPrev ? orderedRows[0]?.id ?? null : null;
-      const nextCursor =
-        hasNext ? orderedRows[orderedRows.length - 1]?.id ?? null : null;
-
-      return {
-        data: orderedRows.map((row) => ({
-          id: row.id,
-          date: row.date.toISOString(),
-          description: row.description,
-          amount: row.amount.toString(),
-          type: row.type,
-          isRecurring: row.isRecurring,
-          category: row.category
-            ? {
-                id: row.category.id,
-                name: row.category.name,
-                color: row.category.color,
-                icon: row.category.icon,
-              }
-            : null,
-          financialAccount: {
-            id: row.financialAccount.id,
-            name: row.financialAccount.name,
-            currency: row.financialAccount.currency,
-          },
-        })),
-        meta: {
-          limit,
-          hasNext,
-          hasPrev,
-          nextCursor,
-          prevCursor,
-        },
-      };
-    },
-    cacheKey,
-    { tags: ["transactions"] }
+      }),
+    pageCacheKey,
+    { tags: [`transactions:${userId}`] }
   );
 
-  return cached();
+  const [totalCount, rows] = await Promise.all([
+    cachedCount(),
+    cachedPage(),
+  ]);
+
+  const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / limit);
+
+  return {
+    transactions: rows.map((row) => ({
+      id: row.id,
+      date: (
+        row.date instanceof Date ? row.date : new Date(row.date)
+      ).toISOString(),
+      description: row.description,
+      amount: row.amount.toString(),
+      type: row.type,
+      isRecurring: row.isRecurring,
+      category: row.category
+        ? {
+            id: row.category.id,
+            name: row.category.name,
+            color: row.category.color,
+            icon: row.category.icon,
+          }
+        : null,
+      financialAccount: {
+        id: row.financialAccount.id,
+        name: row.financialAccount.name,
+        currency: row.financialAccount.currency,
+      },
+    })),
+    totalCount,
+    totalPages,
+  };
 }
 
 export async function getRecentTransactions(
@@ -289,7 +289,7 @@ export async function getRecentTransactions(
       }));
     },
     cacheKey,
-    { tags: ["transactions"] }
+    { tags: [`transactions:${userId}`] }
   );
 
   return cached();

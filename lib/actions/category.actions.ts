@@ -120,7 +120,8 @@ export async function upsertCategory(
       })
 
   revalidateTag("categories", "max")
-  revalidateTag("transactions", "max")
+  revalidateTag(`transactions:${user.id}`, "max")
+  revalidateTag(`transactions-count:${user.id}`, "max")
   revalidateTag("budgets", "max")
   revalidateTag("summary", "max")
   revalidatePath("/categories")
@@ -174,7 +175,8 @@ export async function deleteCategory(
   })
 
   revalidateTag("categories", "max")
-  revalidateTag("transactions", "max")
+  revalidateTag(`transactions:${user.id}`, "max")
+  revalidateTag(`transactions-count:${user.id}`, "max")
   revalidateTag("budgets", "max")
   revalidateTag("summary", "max")
   revalidatePath("/categories")

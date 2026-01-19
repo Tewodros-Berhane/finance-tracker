@@ -18,7 +18,6 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +47,7 @@ export type TransactionRow = {
 type TransactionsTableMeta = {
   onEdit?: (transaction: TransactionRow) => void
   onDelete?: (transaction: TransactionRow) => void
+  pageOffset?: number
 }
 
 const categoryIconMap = {
@@ -65,26 +65,22 @@ const categoryIconMap = {
 
 export const columns: ColumnDef<TransactionRow>[] = [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
+    id: "row",
+    header: "#",
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as TransactionsTableMeta | undefined
+      const offset = meta?.pageOffset ?? 0
+      return (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {offset + row.index + 1}
+        </span>
+      )
+    },
     enableSorting: false,
     enableHiding: false,
+    meta: {
+      className: "w-[48px]",
+    },
   },
   {
     accessorKey: "date",

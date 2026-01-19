@@ -43,15 +43,13 @@ export function DataTablePagination<TData>({
   table,
   pagination,
 }: DataTablePaginationProps<TData>) {
-  const selectedCount = table.getFilteredSelectedRowModel().rows.length
-  const totalRows = table.getFilteredRowModel().rows.length
+  const pageRows = table.getRowModel().rows
+  const totalRows = pageRows.length
 
   if (pagination?.mode === "cursor") {
     return (
       <div className="flex flex-col gap-4 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-muted-foreground text-sm">
-          {selectedCount} of {totalRows} selected
-        </div>
+        <div />
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">Rows per page</p>
@@ -70,9 +68,6 @@ export function DataTablePagination<TData>({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="text-sm font-medium">
-            Showing {totalRows} transactions
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -101,9 +96,7 @@ export function DataTablePagination<TData>({
 
   return (
     <div className="flex flex-col gap-4 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-muted-foreground text-sm">
-        {selectedCount} of {totalRows} selected
-      </div>
+      <div />
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium">Rows per page</p>

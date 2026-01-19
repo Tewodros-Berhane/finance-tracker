@@ -1,13 +1,14 @@
 "use client"
 
 import { Loader2, Tag, Wallet } from "lucide-react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 
 import { DataTable } from "./data-table"
 import { columns, type TransactionRow } from "./columns"
 import { AddTransactionModal } from "./add-transaction-modal"
+import { TablePagination } from "./table-pagination"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -43,11 +44,9 @@ type TransactionsTableProps = {
   categories: FilterOption[]
   formAccounts: AccountOption[]
   formCategories: CategoryOption[]
+  currentPage: number
+  totalPages: number
   pageSize: number
-  hasNext: boolean
-  hasPrev: boolean
-  nextCursor: string | null
-  prevCursor: string | null
 }
 
 const typeOptions = [
@@ -62,57 +61,16 @@ export function TransactionsTable({
   categories,
   formAccounts,
   formCategories,
+  currentPage,
+  totalPages,
   pageSize,
-  hasNext,
-  hasPrev,
-  nextCursor,
-  prevCursor,
 }: TransactionsTableProps) {
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [editing, setEditing] = useState<TransactionRow | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [deleting, setDeleting] = useState<TransactionRow | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const limitParam = Number(searchParams.get("limit"))
-  const resolvedPageSize =
-    !Number.isNaN(limitParam) && limitParam > 0 ? limitParam : pageSize
-
-  const updateParams = (
-    updates: { limit?: number; cursor?: string | null; direction?: "next" | "prev" },
-    resetCursor?: boolean
-  ) => {
-    const params = new URLSearchParams(searchParams.toString())
-
-    if (updates.limit !== undefined) {
-      params.set("limit", String(updates.limit))
-    }
-
-    if (updates.cursor !== undefined || resetCursor) {
-      params.delete("page")
-    }
-
-    if (resetCursor) {
-      params.delete("cursor")
-      params.delete("direction")
-    }
-
-    if (updates.cursor !== undefined) {
-      if (updates.cursor) {
-        params.set("cursor", updates.cursor)
-      } else {
-        params.delete("cursor")
-      }
-    }
-
-    if (updates.direction !== undefined) {
-      params.set("direction", updates.direction)
-    }
-
-    router.push(`${pathname}?${params.toString()}`)
-  }
 
   const handleEdit = (transaction: TransactionRow) => {
     if (transaction.type === "TRANSFER") {
@@ -212,24 +170,10 @@ export function TransactionsTable({
       <DataTable
         columns={columns}
         data={data}
-        meta={{ onEdit: handleEdit, onDelete: handleDelete }}
-        pagination={{
-          mode: "cursor",
-          pageSize: resolvedPageSize,
-          rowCount: data.length,
-          hasNext,
-          hasPrev,
-          onNext: () => {
-            if (!nextCursor) return
-            updateParams({ cursor: nextCursor, direction: "next" })
-          },
-          onPrev: () => {
-            if (!prevCursor) return
-            updateParams({ cursor: prevCursor, direction: "prev" })
-          },
-          onPageSizeChange: (nextPageSize) => {
-            updateParams({ limit: nextPageSize }, true)
-          },
+        meta={{
+          onEdit: handleEdit,
+          onDelete: handleDelete,
+          pageOffset: (currentPage - 1) * pageSize,
         }}
         toolbar={{
           accounts: accounts.map((option) => ({
@@ -243,6 +187,7 @@ export function TransactionsTable({
           types: typeOptions,
         }}
       />
+      <TablePagination currentPage={currentPage} totalPages={totalPages} />
     </>
   )
 }

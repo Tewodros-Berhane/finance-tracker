@@ -43,12 +43,8 @@ export async function GET(request: Request) {
 
   const limitParam = searchParams.get("limit")
   const limit = limitParam ? Number(limitParam) : undefined
-  const cursor = searchParams.get("cursor") ?? undefined
-  const directionParam = searchParams.get("direction")
-  const direction =
-    directionParam === "prev" || directionParam === "next"
-      ? directionParam
-      : undefined
+  const pageParam = searchParams.get("page")
+  const page = pageParam ? Number(pageParam) : undefined
 
   try {
     const data = await getTransactions(user.id, {
@@ -57,8 +53,7 @@ export async function GET(request: Request) {
       accountId: searchParams.get("accountId") ?? undefined,
       categoryId: searchParams.get("categoryId") ?? undefined,
       limit: limit && Number.isFinite(limit) ? limit : undefined,
-      cursor,
-      direction,
+      page: page && Number.isFinite(page) ? page : undefined,
     })
 
     return NextResponse.json({ success: true, data, error: null })

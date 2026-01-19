@@ -194,7 +194,8 @@ export async function createTransaction(
       return { success: false, data: null, error: message };
     }
 
-    revalidateTag("transactions", "max");
+    revalidateTag(`transactions:${user.id}`, "max");
+    revalidateTag(`transactions-count:${user.id}`, "max");
     revalidateTag("summary", "max");
     revalidateTag("accounts", "max");
     revalidateTag(`account-${fromAccount.id}`, "max");
@@ -258,7 +259,8 @@ export async function createTransaction(
     },
     select: { id: true },
   });
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidateTag("accounts", "max");
   revalidateTag(`account-${data.financialAccountId}`, "max");
@@ -316,7 +318,8 @@ export async function deleteTransaction(
     },
   });
 
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidateTag("accounts", "max");
   revalidateTag(`account-${existing.financialAccountId}`, "max");
@@ -439,7 +442,8 @@ export async function updateTransaction(
     select: { id: true, financialAccountId: true },
   });
 
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidateTag("accounts", "max");
   const accountIds = new Set([

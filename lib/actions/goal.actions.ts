@@ -155,7 +155,8 @@ export async function upsertGoal(
   }
 
   revalidateTag("goals", "max");
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidateTag("accounts", "max");
   if (data.financialAccountId) {
@@ -266,7 +267,8 @@ export async function updateGoalProgress(
   });
 
   revalidateTag("goals", "max");
-  revalidateTag("transactions", "max");
+  revalidateTag(`transactions:${user.id}`, "max");
+  revalidateTag(`transactions-count:${user.id}`, "max");
   revalidateTag("summary", "max");
   revalidateTag("accounts", "max");
   revalidateTag(`account-${data.financialAccountId}`, "max");
