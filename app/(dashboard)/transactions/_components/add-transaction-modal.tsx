@@ -118,7 +118,7 @@ const initialState: TransactionActionState = {
 
 export function AddTransactionTrigger() {
   return (
-    <Button variant="outline" size="sm" className="gap-2">
+    <Button variant="outline" size="sm" className="gap-2 hidden">
       <Plus className="size-4" />
       Add Transaction
     </Button>
