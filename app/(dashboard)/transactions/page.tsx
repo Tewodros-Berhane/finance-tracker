@@ -27,12 +27,17 @@ type SearchParamsLike =
   | URLSearchParams
   | undefined
 
+const isURLSearchParams = (
+  params: SearchParamsLike
+): params is URLSearchParams =>
+  Boolean(params) && typeof (params as URLSearchParams).get === "function"
+
 const getSearchParam = (params: SearchParamsLike, key: string) => {
   if (!params) return undefined
-  if ("get" in params && typeof params.get === "function") {
+  if (isURLSearchParams(params)) {
     return params.get(key) ?? undefined
   }
-  const value = params[key]
+  const value = (params as Record<string, string | string[] | undefined>)[key]
   return Array.isArray(value) ? value[0] : value
 }
 
